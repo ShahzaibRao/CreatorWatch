@@ -52,18 +52,19 @@ def resolve_folder(custom):
     return os.path.abspath(c), ""
 
 def prospect_folder(name: str, platform: str, custom: str = "") -> str:
+    """Style: <root>/<platform>/<creator>/ — purane platform_name wale folders DB me wese hi rehte hain."""
+    base = ""
     if custom:
-        folder, _err = resolve_folder(custom)
-        if folder:
-            return folder
-    from database import get_downloads_root
-    root = get_downloads_root()
+        base, _err = resolve_folder(custom)
+    if not base:
+        from database import get_downloads_root
+        base = get_downloads_root()
     try:
-        os.makedirs(root, exist_ok=True)
+        os.makedirs(base, exist_ok=True)
     except Exception:
-        root = os.path.join(BASE_DIR, "downloads")
-        os.makedirs(root, exist_ok=True)
-    folder = os.path.join(root, f"{platform}_{sanitize(name)}")
+        base = os.path.join(BASE_DIR, "downloads")
+        os.makedirs(base, exist_ok=True)
+    folder = os.path.join(base, platform, sanitize(name))
     os.makedirs(folder, exist_ok=True)
     return folder
 
@@ -316,9 +317,9 @@ def download_one(video_url: str, folder: str, quality: str = "720p", platform: s
                 pct = round(done * 100 / total, 1) if total else None
             except Exception:
                 pct = None
-            progress({"pct": pct, "title": d.get("filename", "")[-60:]})
+            progress({"pct": pct, "speed": d.get("speed"), "title": d.get("filename", "")[-60:]})
         elif progress and d.get("status") == "finished":
-            progress({"pct": 100})
+            progress({"pct": 100, "speed": None})
     opts = {
         "quiet": True,
         "no_warnings": True,

@@ -257,7 +257,7 @@ def job_cb(pid):
     def _cb(u):
         with JOBS_LOCK:
             if pid in JOBS:
-                JOBS[pid].update({k: u.get(k, JOBS[pid].get(k)) for k in ("stage", "done", "total", "pct", "title")})
+                JOBS[pid].update({k: u.get(k, JOBS[pid].get(k)) for k in ("stage", "done", "total", "pct", "title", "speed")})
                 JOBS[pid]["ts"] = time.time()
     return _cb
 
@@ -650,6 +650,24 @@ def start_scheduler():
 
 if __name__ == "__main__":
     import sys as _sys
+
+    class Api:
+        def pick_folder(self):
+            """Native explorer dialog (desktop window only). Returns path ya ''."""
+            try:
+                import tkinter as tk
+                from tkinter import filedialog
+                r = tk.Tk()
+                r.withdraw()
+                try:
+                    r.attributes("-topmost", True)
+                except Exception:
+                    pass
+                p = filedialog.askdirectory(title="Save folder select karo")
+                r.destroy()
+                return p or ""
+            except Exception:
+                return ""
     start_scheduler()
     print("Dashboard: http://127.0.0.1:5000")
     print("Downloads folder: ./downloads/")
@@ -669,7 +687,7 @@ if __name__ == "__main__":
                     time.sleep(0.5)
             try:
                 webview.create_window(f"CreatorWatch v{VERSION}", "http://127.0.0.1:5000",
-                                      width=1200, height=800, min_size=(360, 640))
+                                      width=1200, height=800, min_size=(360, 640), js_api=Api())
                 webview.start()
                 os._exit(0)
             except Exception as e:

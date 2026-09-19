@@ -189,7 +189,9 @@ tr:last-child td{border-bottom:0}
           <div><label>{{ t('f_name') }}</label><input name="name" placeholder="{{ t('f_name_ph') }}" required></div>
           <div class="full"><label>{{ t('f_link') }}</label><input name="url" placeholder="{{ t('f_link_ph') }}" required></div>
           <div><label>{{ t('f_every') }}</label><input name="interval" type="number" value="15" min="5" max="1440"></div>
-          <div class="full"><label>Save folder (optional — khali to default; D:\Videos jesi drive/path bhi de sakte ho)</label><input name="folder" placeholder="default: downloads/…"></div>
+          <div class="full"><label>Save folder (optional — khali to default; D:\Videos jesi drive/path bhi de sakte ho)</label>
+            <div style="display:flex;gap:8px"><input id="addFolder" name="folder" placeholder="default: downloads/…"><button type="button" class="btn ghost browse-btn" data-target="addFolder" style="display:none;white-space:nowrap">📁 Browse</button></div>
+          </div>
           <div><label>{{ t('f_quality') }}</label>
             <select name="quality">
               <option value="720p" selected>720p</option>
@@ -274,6 +276,11 @@ tr:last-child td{border-bottom:0}
   document.onclick=function(){ panel.classList.remove('on'); };
   panel.onclick=function(e){ e.stopPropagation(); };
   function esc(s){ return String(s||'').replace(/[<>&]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]}); }
+  function fmtSpeed(b){ if(b==null||isNaN(b)||b<=0) return ''; if(b>1048576) return (b/1048576).toFixed(1)+' MB/s'; if(b>1024) return (b/1024).toFixed(0)+' KB/s'; return b+' B/s'; }
+  if(window.pywebview){ document.querySelectorAll('.browse-btn').forEach(function(b){
+    b.style.display='';
+    b.onclick=function(){ window.pywebview.api.pick_folder().then(function(p){ if(p) document.getElementById(b.dataset.target).value=p; }); };
+  }); }
   setInterval(function(){
     fetch('/api/jobs').then(function(r){return r.json()}).then(function(d){
       var jobs=d.jobs||{};
@@ -289,6 +296,7 @@ tr:last-child td{border-bottom:0}
           if(j.total>1){ pct=Math.round(j.done*100/j.total); label=j.done+'/'+j.total+' — '+j.title; }
           else { pct=8; label=j.title; }
         } else { label=(j.total>1?j.done+'/'+j.total+' · ':'')+j.title; }
+        var sp=fmtSpeed(j.speed); if(sp) label+=' · '+sp;
         el.querySelector('.fill').style.width=pct+'%';
         el.querySelector('small').textContent=(j.stage==='listing'?'🔍 ':'⬇ ')+label;
       });

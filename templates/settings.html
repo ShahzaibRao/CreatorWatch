@@ -38,7 +38,7 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 <p class="tip">Downloads kahan save hon. Khali = default folder. Drive full ho to yahan dosri drive/folder set karo (e.g. D:\Videos).{% if free_gb is not none %} Abhi is drive me <b>{{ free_gb }} GB free</b> / {{ total_gb }} GB total.{% endif %}</p>
 <form method="post">
 <label>Downloads folder (abhi: {{ root }})</label>
-<input name="downloads_root" value="{{ root }}" placeholder="D:\Videos">
+<div style="display:flex;gap:8px"><input id="rootFolder" name="downloads_root" value="{{ root }}" placeholder="D:\Videos"><button type="button" class="btn ghost browse-btn" data-target="rootFolder" style="display:none;white-space:nowrap;width:auto;margin-top:0;padding:12px 14px">📁</button></div>
 <button type="submit">💾 Save Location</button>
 </form>
 </div>
@@ -79,5 +79,6 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 </div>
 <script>
 (function(){var r=document.documentElement,b=document.getElementById('themeBtn');function a(t){r.setAttribute('data-theme',t);try{localStorage.setItem('pd-theme',t)}catch(e){}}var s=null;try{s=localStorage.getItem('pd-theme')}catch(e){}if(!s){s=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'}a(s);b.onclick=function(){a(r.getAttribute('data-theme')==='light'?'dark':'light')}})();
+(function(){ if(window.pywebview){ document.querySelectorAll('.browse-btn').forEach(function(b){ b.style.display=''; b.onclick=function(){ window.pywebview.api.pick_folder().then(function(p){ if(p) document.getElementById(b.dataset.target).value=p; }); }; }); } })();
 </script>
 </body></html>

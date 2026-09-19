@@ -284,16 +284,23 @@ def get_metrics(downloads_root="downloads"):
         FROM profiles p LEFT JOIN videos v ON v.profile_id = p.id
         GROUP BY p.id
     """).fetchall()
+    folders = {r["folder"] for r in conn.execute("SELECT folder FROM profiles")}
     conn.close()
 
-    # storage used
+    # storage: sab profile folders (custom locations samet) + global root
+    import os as _os
+    try:
+        folders.add(get_downloads_root())
+    except Exception:
+        pass
     total_bytes = 0
-    base = os.path.join(os.path.dirname(__file__), downloads_root)
-    if os.path.exists(base):
-        for root, _, files in os.walk(base):
-            for f in files:
+    for f in folders:
+        if not f or not _os.path.isdir(f):
+            continue
+        for root, _, files in _os.walk(f):
+            for fn in files:
                 try:
-                    total_bytes += os.path.getsize(os.path.join(root, f))
+                    total_bytes += _os.path.getsize(_os.path.join(root, fn))
                 except OSError:
                     pass
 
