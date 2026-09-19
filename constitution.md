@@ -82,6 +82,7 @@ Server: `http://127.0.0.1:5000` (Flask dev server, local use ke liye).
 16. ✅ Multi-language (EN/UR/ES/中文): translations.py (~90 keys), lang cookie + /lang route, header dropdown on all pages, default Roman Urdu
 17. ✅ v0.1.0 production release → https://github.com/ShahzaibRao/CreatorWatch.git (main + tag v0.1.0, .gitignore, footer version)
 18. ✅ Multi-language READMEs: README.md (EN) + README.ur/es/zh.md with nav bar (main branch, post-v0.1.0)
+19. ✅ EXE + auto-update: paths.py (frozen user-data dir), PyInstaller onefile (54MB, templates+gallery-dl+ffmpeg bundled), gallery-dl in-process when frozen, EXE auto-opens browser, /updates page (GitHub release check, .exe download+restart updater, engine pip upgrade in source mode), 2-way install docs (source vs Releases EXE)
 
 ---
 

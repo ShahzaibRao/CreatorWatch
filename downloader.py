@@ -1,7 +1,8 @@
 import os
 import re
+from paths import app_dir, ensure_pylibs
+ensure_pylibs()
 import yt_dlp
-from paths import app_dir
 from database import video_exists, add_video, update_last_check
 
 BASE_DIR = app_dir()

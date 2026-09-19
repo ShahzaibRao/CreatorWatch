@@ -22,7 +22,7 @@ STRINGS = {
 "foot": "Files stay tracked in DB — deleting a file won't re-download it.",
 "st_ok": "OK", "st_error": "Error", "st_working": "Working", "st_paused": "Paused", "new": "NEW",
 "cookies_note": "Instagram / X (Twitter) need login cookies —",
-"cookies_here": "import them here", "cookies_btn": "Cookies",
+"cookies_here": "import them here", "cookies_btn": "Cookies", "dl_desktop": "Desktop App",
 "yt_note": "YouTube + TikTok work without cookies.",
 "bell_title": "New downloads", "bell_read": "Mark all read", "bell_empty": "No new downloads.",
 # cookies page
@@ -76,7 +76,7 @@ STRINGS = {
 "foot": "Files DB me tracked rehti hain — file delete bhi karo to dobara download nahi hogi.",
 "st_ok": "OK", "st_error": "Error", "st_working": "Working", "st_paused": "Paused", "new": "NEW",
 "cookies_note": "Instagram / X (Twitter) ke liye login cookies chahiye —",
-"cookies_here": "yahan import karo", "cookies_btn": "Cookies",
+"cookies_here": "yahan import karo", "cookies_btn": "Cookies", "dl_desktop": "Desktop App",
 "yt_note": "YouTube + TikTok baghair cookies chalte hain.",
 "bell_title": "Nayi downloads", "bell_read": "Sab read mark karo", "bell_empty": "Koi nayi download nahi.",
 # cookies page
@@ -130,7 +130,7 @@ STRINGS = {
 "foot": "Los archivos quedan registrados en la BD — borrar un archivo no lo vuelve a descargar.",
 "st_ok": "OK", "st_error": "Error", "st_working": "Trabajando", "st_paused": "Pausado", "new": "NUEVO",
 "cookies_note": "Instagram / X (Twitter) necesitan cookies de sesión —",
-"cookies_here": "impórtalas aquí", "cookies_btn": "Cookies",
+"cookies_here": "impórtalas aquí", "cookies_btn": "Cookies", "dl_desktop": "App escritorio",
 "yt_note": "YouTube + TikTok funcionan sin cookies.",
 "bell_title": "Descargas nuevas", "bell_read": "Marcar todo como leído", "bell_empty": "Sin descargas nuevas.",
 # cookies page
@@ -184,7 +184,7 @@ STRINGS = {
 "foot": "文件在数据库中有记录 — 删除文件不会重新下载。",
 "st_ok": "正常", "st_error": "错误", "st_working": "进行中", "st_paused": "已暂停", "new": "NEW",
 "cookies_note": "Instagram / X (Twitter) 需要登录 cookies —",
-"cookies_here": "在此导入", "cookies_btn": "Cookies",
+"cookies_here": "在此导入", "cookies_btn": "Cookies", "dl_desktop": "桌面版",
 "yt_note": "YouTube + TikTok 无需 cookies。",
 "bell_title": "新下载", "bell_read": "全部标为已读", "bell_empty": "没有新下载。",
 # cookies page

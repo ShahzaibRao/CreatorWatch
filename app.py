@@ -4,9 +4,10 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from flask import Flask, render_template, request, redirect, url_for, jsonify, g
 from apscheduler.schedulers.background import BackgroundScheduler
+from paths import app_dir, is_frozen, ensure_pylibs
+ensure_pylibs()  # exe: updated engines (tools/pylibs) bundled se pehle load hon
 import yt_dlp
 import database as db
-from paths import app_dir, is_frozen
 from translations import LANGS, text as _text
 from downloader import detect_platform, prospect_folder, check_profile, check_all_profiles, check_due_profiles, first_run
 
@@ -456,18 +457,8 @@ def api_metrics():
     return jsonify(db.get_metrics())
 
 def engine_versions():
-    out = {}
-    try:
-        from yt_dlp.version import __version__ as yv
-        out["yt-dlp"] = yv
-    except Exception:
-        out["yt-dlp"] = "?"
-    try:
-        import gallery_dl
-        out["gallery-dl"] = getattr(gallery_dl, "__version__", "?")
-    except Exception:
-        out["gallery-dl"] = "?"
-    return out
+    import engines
+    return engines.active_versions()
 
 def latest_release():
     """GitHub latest release (15s timeout). Returns dict or {} on fail."""
@@ -496,9 +487,22 @@ def updates_page():
         rel = latest_release()
     if action == "engines":
         if is_frozen():
-            msg, msg_ok = "EXE me engines bundled hain — app update ke sath naye milenge", False
+            import engines
+            ok, detail = engines.update_engines()
+            msg = ("Engines updated (restart ke baad active): " if ok else "Engine update me masla: ") + detail
+            msg_ok = ok
+            if ok:
+                msg += " — neeche Restart dabao"
         else:
             msg, msg_ok = _upgrade_engines()
+        rel = latest_release()
+    if action == "restart_app" and is_frozen():
+        _restart_app()
+        return "<h2>App restart ho rahi hai — window dobara khulegi.</h2>"
+    if action == "engines_reset" and is_frozen():
+        import engines
+        engines.clear_external()
+        msg, msg_ok = "External engines hata diye — bundled wale use honge (restart ke baad)", True
         rel = latest_release()
     if action == "app" and is_frozen():
         ok, detail = _download_update(rel or latest_release())
@@ -510,9 +514,15 @@ def updates_page():
     latest = (rel.get("tag_name", "") if isinstance(rel, dict) else "") or ""
     has_update = bool(latest) and _ver_tuple(latest) > _ver_tuple(VERSION)
     pending = os.path.exists(os.path.join(app_dir(), "CreatorWatch.new.exe"))
+    ext = {}
+    try:
+        import engines
+        ext = engines.external_versions()
+    except Exception:
+        pass
     return render_template("updates.html", version=VERSION, latest=latest or "—",
                            has_update=has_update, notes=(rel.get("body", "") or "")[:1500] if isinstance(rel, dict) else "",
-                           engines=engine_versions(), frozen=is_frozen(),
+                           engines=engine_versions(), frozen=is_frozen(), external=ext,
                            pending=pending, msg=msg, msg_ok=msg_ok,
                            rel_error=(rel.get("error", "") if isinstance(rel, dict) else ""))
 
@@ -553,6 +563,20 @@ def _download_update(rel):
     except Exception as e:
         return False, f"Download fail: {e}"
 
+def _restart_app():
+    """EXE restart (engines update ke baad naye load hon)."""
+    import subprocess
+    import sys as _sys
+    try:
+        subprocess.Popen([_sys.executable], cwd=app_dir(),
+                         creationflags=getattr(subprocess, "DETACHED_PROCESS", 0),
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         stdin=subprocess.DEVNULL, close_fds=True)
+    except Exception as e:
+        print(f"[RESTART FAIL] {e}", flush=True)
+        return
+    threading.Timer(2.0, lambda: os._exit(0)).start()
+
 def _apply_update_restart():
     """Old exe ko .new se replace karke restart (batch detached)."""
     import subprocess
@@ -575,12 +599,35 @@ def start_scheduler():
     return sched
 
 if __name__ == "__main__":
+    import sys as _sys
     start_scheduler()
     print("Dashboard: http://127.0.0.1:5000")
     print("Downloads folder: ./downloads/")
     print(f"Workers: {max_workers()} parallel profiles (per-profile sequential)")
-    if is_frozen():
-        # desktop mode: same web interface, browser khud khul jaye
+    use_gui = is_frozen() or "--app" in _sys.argv  # exe = desktop window, source --app flag
+    if use_gui:
         import webbrowser
-        threading.Timer(1.5, lambda: webbrowser.open("http://127.0.0.1:5000")).start()
-    app.run(host="127.0.0.1", port=5000, debug=False, threaded=True)
+        try:
+            import webview
+            threading.Thread(target=lambda: app.run(host="127.0.0.1", port=5000, debug=False, threaded=True, use_reloader=False), daemon=True).start()
+            import urllib.request
+            for _ in range(60):
+                try:
+                    urllib.request.urlopen("http://127.0.0.1:5000/", timeout=2)
+                    break
+                except Exception:
+                    time.sleep(0.5)
+            try:
+                webview.create_window(f"CreatorWatch v{VERSION}", "http://127.0.0.1:5000",
+                                      width=1200, height=800, min_size=(360, 640))
+                webview.start()
+                os._exit(0)
+            except Exception as e:
+                print(f"[GUI FAIL] {e} — browser me khol rahe hain", flush=True)
+                webbrowser.open("http://127.0.0.1:5000")
+                threading.Event().wait(86400 * 365)  # server thread chalti rahe
+        except ImportError:
+            threading.Timer(1.5, lambda: webbrowser.open("http://127.0.0.1:5000")).start()
+            app.run(host="127.0.0.1", port=5000, debug=False, threaded=True)
+    else:
+        app.run(host="127.0.0.1", port=5000, debug=False, threaded=True)
