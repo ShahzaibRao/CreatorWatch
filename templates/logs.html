@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="{{ lang }}" data-theme="dark">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logs — CreatorWatch</title>
+<style>
+:root{--bg:#0b0f14;--surface:#12181f;--surface2:#0e141b;--border:#212b36;--text:#e8edf2;--muted:#93a0b0;--accent:#12b981;--danger:#f0524f;--info:#3b9eff;--shadow:0 8px 28px rgba(0,0,0,.35);--r:14px}
+[data-theme="light"]{--bg:#eef1f4;--surface:#fff;--surface2:#f6f8fa;--border:#dfe6ec;--text:#101820;--muted:#5d6b7a;--shadow:0 8px 24px rgba(16,24,32,.08)}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,"Noto Sans SC",sans-serif;background:var(--bg);color:var(--text)}
+.wrap{max-width:900px;margin:0 auto;padding:22px 16px 60px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:8px;flex-wrap:wrap}
+h1{font-size:19px;margin:0}
+a{color:var(--info);text-decoration:none}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:14px}
+.card-h{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.card-h h2{margin:0;font-size:15px}
+.card-b{padding:16px 18px}
+.msg{padding:11px 14px;border-radius:10px;font-size:13.5px;margin-bottom:14px}
+.msg.ok{background:rgba(18,185,129,.13);color:var(--accent);border:1px solid rgba(18,185,129,.4)}
+.msg.err{background:rgba(240,82,79,.1);color:var(--danger);border:1px solid rgba(240,82,79,.4)}
+.btn{border:0;border-radius:10px;padding:9px 14px;font-weight:700;font-size:13px;cursor:pointer;background:var(--accent);color:#04281c}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn.danger{background:transparent;border:1px solid var(--danger);color:var(--danger)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+select.mini{width:auto;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px}
+pre#logbox{white-space:pre-wrap;word-break:break-all;font-family:ui-monospace,Consolas,monospace;font-size:11.5px;line-height:1.55;margin:0;max-height:60vh;overflow:auto;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px}
+.errline{color:var(--danger)}
+small{color:var(--muted);font-size:12px}
+.theme-btn{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600}
+select.langsel{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:9px 12px;font-size:13px;font-weight:600}
+.topbtns{display:flex;gap:8px;align-items:center;flex-wrap:nowrap}
+@media(max-width:560px){.wrap{padding:14px 12px 50px}}
+</style></head>
+<body><div class="wrap">
+<div class="top"><a href="/">← {{ t('back_dash') }}</a><div class="topbtns">
+<select class="langsel" onchange="window.location.href='/lang/'+this.value">{% for code, name in langs.items() %}<option value="{{ code }}" {% if code==lang %}selected{% endif %}>{{ name }}</option>{% endfor %}</select>
+<button class="theme-btn" id="themeBtn">◐</button></div></div>
+<h1>📋 Logs</h1>
+<p><small>Debug ke liye — errors dekho, download bhejo ({{ (logsize/1024)|round(1) }} KB).</small></p>
+
+{% if msg %}<div class="msg {% if msg_ok %}ok{% else %}err{% endif %}">{{ msg }}</div>{% endif %}
+
+<div class="card"><div class="card-h"><h2>server.log (latest 400)</h2>
+<div class="row">
+<select class="mini" id="levelSel">
+<option value="all" {% if level=='all' %}selected{% endif %}>Sab kuch</option>
+<option value="errors" {% if level=='errors' %}selected{% endif %}>Sirf errors</option>
+</select>
+<button class="btn ghost" id="refreshBtn">🔄 Refresh</button>
+<label style="font-size:12px;color:var(--muted)"><input type="checkbox" id="autoChk" checked> auto (5s)</label>
+<a class="btn ghost" style="padding:9px 14px" href="/logs/download">⬇ Download</a>
+<form method="post" action="/logs/clear" onsubmit="return confirm('Log clear karni hai?')" style="margin:0"><button class="btn danger" type="submit">🗑 Clear</button></form>
+</div></div>
+<div class="card-b"><pre id="logbox">{% for l in lines %}<span class="{% if 'ERROR' in l or 'FAIL' in l or 'Traceback' in l %}errline{% endif %}">{{ l }}</span>
+{% endfor %}</pre></div></div>
+</div>
+<script>
+(function(){var r=document.documentElement,b=document.getElementById('themeBtn');function a(t){r.setAttribute('data-theme',t);try{localStorage.setItem('pd-theme',t)}catch(e){}}var s=null;try{s=localStorage.getItem('pd-theme')}catch(e){}if(!s){s=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'}a(s);b.onclick=function(){a(r.getAttribute('data-theme')==='light'?'dark':'light')}})();
+(function(){
+  var box=document.getElementById('logbox'), sel=document.getElementById('levelSel'),
+      auto=document.getElementById('autoChk');
+  function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function load(){
+    fetch('/api/logs?level='+sel.value+'&n=400').then(function(r){return r.json()}).then(function(d){
+      box.innerHTML=d.lines.map(function(l){
+        var hot=(l.indexOf('ERROR')>=0||l.indexOf('FAIL')>=0||l.indexOf('Traceback')>=0)?' class="errline"':'';
+        return '<span'+hot+'>'+esc(l)+'</span>';
+      }).join('\n');
+      box.scrollTop=box.scrollHeight;
+    }).catch(function(){});
+  }
+  document.getElementById('refreshBtn').onclick=load;
+  sel.onchange=function(){ window.location.href='/logs?level='+sel.value; };
+  setInterval(function(){ if(auto.checked) load(); },5000);
+  box.scrollTop=box.scrollHeight;
+})();
+</script>
+</body></html>

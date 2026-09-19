@@ -506,6 +506,57 @@ def cookies_delete():
 def api_metrics():
     return jsonify(db.get_metrics())
 
+LOG_PATH = os.path.join(app_dir(), "server.log")
+
+def read_log_tail(n=400, level="all"):
+    try:
+        with open(LOG_PATH, encoding="utf-8", errors="replace") as f:
+            lines = f.read().splitlines()
+    except Exception as e:
+        return [f"(log nahi mil rahi: {e})"]
+    if level == "errors":
+        lines = [l for l in lines if ("ERROR" in l or "FAIL" in l or "Error" in l or "error" in l or "Traceback" in l)]
+    return lines[-n:]
+
+@app.route("/logs")
+def logs_page():
+    level = request.args.get("level", "all")
+    if level not in ("all", "errors"):
+        level = "all"
+    return render_template("logs.html", lines=read_log_tail(400, level), level=level,
+                           logsize=(os.path.getsize(LOG_PATH) if os.path.exists(LOG_PATH) else 0),
+                           msg=request.args.get("msg", ""), msg_ok=request.args.get("ok", "") == "1")
+
+@app.route("/api/logs")
+def api_logs():
+    level = request.args.get("level", "all")
+    if level not in ("all", "errors"):
+        level = "all"
+    try:
+        n = max(50, min(int(request.args.get("n", "200")), 2000))
+    except ValueError:
+        n = 200
+    return jsonify({"lines": read_log_tail(n, level)})
+
+@app.route("/logs/download")
+def logs_download():
+    from flask import Response
+    try:
+        with open(LOG_PATH, encoding="utf-8", errors="replace") as f:
+            data = f.read()
+    except Exception as e:
+        data = f"(log nahi mil rahi: {e})"
+    return Response(data, mimetype="text/plain",
+                    headers={"Content-Disposition": "attachment; filename=creatorwatch.log"})
+
+@app.route("/logs/clear", methods=["POST"])
+def logs_clear():
+    try:
+        open(LOG_PATH, "w").close()
+        return redirect(url_for("logs_page", msg="Log clear ho gayi", ok="1"))
+    except Exception as e:
+        return redirect(url_for("logs_page", msg=f"Clear fail: {e}", ok="0"))
+
 def engine_versions():
     import engines
     return engines.active_versions()
