@@ -1,4 +1,4 @@
-# 📥 CreatorWatch (Prospect Downloader) — v0.1.0
+# 📥 CreatorWatch — v0.1.0
 
 🌐 Idioma: [English](README.md) · [Roman Urdu](README.ur.md) · **Español** · [中文](README.zh.md)
 

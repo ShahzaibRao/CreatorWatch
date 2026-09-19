@@ -4,7 +4,7 @@ LANGS = {"en": "English", "ur": "Roman Urdu", "es": "Español", "zh": "中文"}
 
 STRINGS = {
 "en": {
-"app_name": "Prospect Downloader", "tagline": "YouTube · Instagram · X · TikTok — auto-track & download",
+"app_name": "CreatorWatch", "tagline": "YouTube · Instagram · X · TikTok — auto-track & download",
 "light": "Light", "dark": "Dark", "back_dash": "Dashboard",
 "stat_prospects": "Prospects", "stat_videos": "Videos", "stat_storage": "Storage", "stat_autocheck": "Auto-check",
 "every_minute": "Every minute",
@@ -58,7 +58,7 @@ STRINGS = {
 "e_quality": "Video quality", "e_save": "Save changes",
 },
 "ur": {
-"app_name": "Prospect Downloader", "tagline": "YouTube · Instagram · X · TikTok — auto-track aur download",
+"app_name": "CreatorWatch", "tagline": "YouTube · Instagram · X · TikTok — auto-track aur download",
 "light": "Light", "dark": "Dark", "back_dash": "Dashboard",
 "stat_prospects": "Prospects", "stat_videos": "Videos", "stat_storage": "Storage", "stat_autocheck": "Auto-check",
 "every_minute": "Har minute",
@@ -112,7 +112,7 @@ STRINGS = {
 "e_quality": "Video quality", "e_save": "Save changes",
 },
 "es": {
-"app_name": "Prospect Downloader", "tagline": "YouTube · Instagram · X · TikTok — seguimiento y descarga automática",
+"app_name": "CreatorWatch", "tagline": "YouTube · Instagram · X · TikTok — seguimiento y descarga automática",
 "light": "Claro", "dark": "Oscuro", "back_dash": "Panel",
 "stat_prospects": "Prospectos", "stat_videos": "Videos", "stat_storage": "Almacenamiento", "stat_autocheck": "Auto-chequeo",
 "every_minute": "Cada minuto",
@@ -166,7 +166,7 @@ STRINGS = {
 "e_quality": "Calidad de video", "e_save": "Guardar cambios",
 },
 "zh": {
-"app_name": "Prospect Downloader", "tagline": "YouTube · Instagram · X · TikTok — 自动跟踪与下载",
+"app_name": "CreatorWatch", "tagline": "YouTube · Instagram · X · TikTok — 自动跟踪与下载",
 "light": "浅色", "dark": "深色", "back_dash": "返回面板",
 "stat_prospects": "关注", "stat_videos": "视频", "stat_storage": "存储", "stat_autocheck": "自动检查",
 "every_minute": "每分钟",

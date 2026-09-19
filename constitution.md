@@ -1,4 +1,4 @@
-# Constitution — Prospect Downloader (project memory)
+# Constitution — CreatorWatch (project memory)
 
 > Ye file is project ki yaad-dasht hai: **kya banaya, kaise banaya, har file kya karti hai,
 > kaun se features ban chuke, aur progress kahan tak hai.** Naya kaam shuru karne se pehle
@@ -8,7 +8,7 @@
 
 ## 1. Kya banaya
 
-**Prospect Downloader** — ek local web-app jo YouTube, TikTok, Instagram aur X (Twitter)
+**CreatorWatch** — ek local web-app jo YouTube, TikTok, Instagram aur X (Twitter)
 ke channels/profiles ko track karti hai:
 
 - User channel/profile link add karta hai → `downloads/<platform>_<name>/` folder banta hai
@@ -80,6 +80,8 @@ Server: `http://127.0.0.1:5000` (Flask dev server, local use ke liye).
 14. ✅ Workers setting: DB-persistent `max_workers` (1–10), `/settings` page with slow-vs-fast guidance, live apply no-restart, header indicator links to settings
 15. ✅ Workers calculator: CPU cores/RAM/Net inputs → bottleneck formula (cpu=cores-1, ram=40%÷450MB, net=÷10Mbps, min of three) + one-click Apply + ready chart (cores detect via os.cpu_count)
 16. ✅ Multi-language (EN/UR/ES/中文): translations.py (~90 keys), lang cookie + /lang route, header dropdown on all pages, default Roman Urdu
+17. ✅ v0.1.0 production release → https://github.com/ShahzaibRao/CreatorWatch.git (main + tag v0.1.0, .gitignore, footer version)
+18. ✅ Multi-language READMEs: README.md (EN) + README.ur/es/zh.md with nav bar (main branch, post-v0.1.0)
 
 ---
 
