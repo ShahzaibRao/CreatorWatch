@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="{{ lang }}" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ t('app_name') }}</title>
+<style>
+:root{
+  --bg:#0b0f14; --surface:#12181f; --surface2:#0e141b; --border:#212b36;
+  --text:#e8edf2; --muted:#93a0b0; --accent:#12b981; --accent-d:#0a8f64;
+  --warn:#f5a524; --danger:#f0524f; --info:#3b9eff;
+  --shadow:0 8px 28px rgba(0,0,0,.35); --r:14px;
+}
+[data-theme="light"]{
+  --bg:#eef1f4; --surface:#ffffff; --surface2:#f6f8fa; --border:#dfe6ec;
+  --text:#101820; --muted:#5d6b7a; --shadow:0 8px 24px rgba(16,24,32,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,"Noto Sans SC",sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+a{color:var(--info);text-decoration:none}
+.wrap{max-width:1120px;margin:0 auto;padding:20px 18px 60px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#0e2a22,#12b981);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow)}
+.logo svg{width:22px;height:22px;stroke:#fff}
+.brand h1{font-size:19px;margin:0;letter-spacing:.2px}
+.brand p{margin:2px 0 0;font-size:12.5px;color:var(--muted)}
+.topbtns{display:flex;gap:8px;align-items:center;flex-wrap:nowrap}
+.topbtns .theme-btn,.topbtns .langsel{white-space:nowrap}
+.theme-btn{display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600}
+.theme-btn:hover{border-color:var(--accent)}
+select.langsel{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:9px 12px;font-size:13px;font-weight:600;cursor:pointer}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:6px 0 16px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:15px 16px;display:flex;gap:12px;align-items:center;box-shadow:var(--shadow)}
+.stat .ic{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stat .ic svg{width:20px;height:20px}
+.stat small{display:block;color:var(--muted);font-size:12px;margin-bottom:3px}
+.stat b{font-size:21px;letter-spacing:.2px}
+.ic.g{background:rgba(18,185,129,.14)}.ic.g svg{stroke:var(--accent)}
+.ic.b{background:rgba(59,158,255,.14)}.ic.b svg{stroke:var(--info)}
+.ic.a{background:rgba(245,165,36,.16)}.ic.a svg{stroke:var(--warn)}
+.ic.v{background:rgba(18,185,129,.14)}.ic.v svg{stroke:var(--accent)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow)}
+.card-h{padding:15px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.card-h h2{margin:0;font-size:15px}
+.card-h span{font-size:12.5px;color:var(--muted)}
+.card-b{padding:16px 18px}
+.fgrid{display:grid;grid-template-columns:1.1fr 2fr 110px 130px auto;gap:10px}
+label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px;font-weight:600}
+input,select{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;outline:none}
+input:focus,select:focus{border-color:var(--accent)}
+.btn{border:0;border-radius:10px;padding:11px 18px;font-weight:700;font-size:14px;cursor:pointer;background:var(--accent);color:#04281c}
+.btn:hover{background:var(--accent-d);color:#fff}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
+.twrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:760px}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);text-align:left;padding:11px 14px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:13px 14px;border-bottom:1px solid var(--border);font-size:14px;vertical-align:middle}
+tr:last-child td{border-bottom:0}
+.pname{font-weight:700}
+.pfolder{font-size:12px;color:var(--muted);font-family:ui-monospace,Consolas,monospace;word-break:break-all}
+.badge{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid var(--border);background:var(--surface2);white-space:nowrap}
+.badge.yt{color:#f0524f;border-color:rgba(240,82,79,.4)}
+.badge.tk{color:var(--text)}
+.badge.ig{color:#c13584;border-color:rgba(193,53,132,.4)}
+.badge.tw{color:var(--info);border-color:rgba(59,158,255,.4)}
+.notice{font-size:12.5px;padding:10px 14px;border-radius:10px;margin:0 0 14px;border:1px solid var(--border);background:var(--surface);color:var(--muted)}
+.notice b{color:var(--warn)}
+.pill{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap}
+.pill.ok{background:rgba(18,185,129,.15);color:var(--accent)}
+.pill.err{background:rgba(240,82,79,.13);color:var(--danger)}
+.pill.wait{background:rgba(245,165,36,.15);color:var(--warn)}
+.pill.new{background:rgba(59,158,255,.15);color:var(--info)}
+.act{display:flex;gap:8px;white-space:nowrap}
+.icon-btn{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);background:var(--surface2)}
+.icon-btn:hover{border-color:var(--accent)}
+.icon-btn.danger:hover{border-color:var(--danger);color:var(--danger)}
+.icon-btn svg{width:14px;height:14px}
+.rlist{display:flex;flex-direction:column}
+.ritem{display:flex;gap:12px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--border)}
+.ritem:last-child{border-bottom:0}
+.thumb{width:42px;height:42px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.thumb svg{width:18px;height:18px;stroke:var(--accent)}
+.ritem b{font-size:13.5px;display:block;line-height:1.35}
+.ritem small{color:var(--muted);font-size:12px}
+.ritem time{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+.empty{padding:22px 18px;color:var(--muted);font-size:13.5px}
+.foot{text-align:center;color:var(--muted);font-size:12px;margin-top:22px}
+.prog{display:none;margin-top:8px;max-width:280px}
+.prog.on{display:block}
+.prog .bar{height:7px;border-radius:99px;background:var(--surface2);border:1px solid var(--border);overflow:hidden}
+.prog .fill{height:100%;width:0%;border-radius:99px;background:linear-gradient(90deg,var(--accent-d),var(--accent));transition:width .4s}
+.prog small{font-size:11px;color:var(--muted);display:block;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bellwrap{position:relative}
+.bellcount{position:absolute;top:-6px;right:-6px;min-width:19px;height:19px;border-radius:99px;background:var(--danger);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 5px}
+.bellpanel{position:absolute;right:0;top:46px;width:min(360px,86vw);max-height:380px;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);z-index:50;display:none}
+.bellpanel.on{display:block}
+.bellpanel .bh{display:flex;justify-content:space-between;align-items:center;padding:12px 15px;border-bottom:1px solid var(--border);font-size:13.5px;font-weight:700}
+.bellpanel .bi{padding:10px 15px;border-bottom:1px solid var(--border);font-size:12.5px}
+.bellpanel .bi:last-child{border:0}
+.bellpanel .bi small{color:var(--muted)}
+@media(max-width:900px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .fgrid{grid-template-columns:1fr 1fr}
+  .fgrid .full{grid-column:1/-1}
+}
+@media(max-width:560px){
+  .topbtns{gap:6px}
+  .topbtns .theme-btn{padding:7px 9px;font-size:11.5px}
+  .topbtns .langsel{max-width:104px;padding:7px 4px;font-size:11.5px}
+  .wrap{padding:14px 12px 50px}
+  .brand h1{font-size:16px}
+  .stats{grid-template-columns:1fr 1fr;gap:10px}
+  .stat{padding:12px}
+  .stat b{font-size:18px}
+  .fgrid{grid-template-columns:1fr}
+  .ritem time{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg>
+      </div>
+      <div>
+        <h1>{{ t('app_name') }}</h1>
+        <p>{{ t('tagline') }}</p>
+      </div>
+    </div>
+    <div class="topbtns">
+      <div class="bellwrap">
+      <button class="theme-btn" id="bellBtn" aria-label="Notifications">🔔<span class="bellcount" id="bellCount" {% if not unseen %}style="display:none"{% endif %}>{{ unseen|length }}</span></button>
+      <div class="bellpanel" id="bellPanel">
+        <div class="bh"><span>{{ t('bell_title') }}</span><a href="/notifications/read" style="font-size:12px">{{ t('bell_read') }}</a></div>
+        <div id="bellList">
+          {% for v in unseen %}
+          <div class="bi"><b>{{ v.title }}</b><br><small>{{ v.profile_name }} · {{ v.platform }} · {{ v.downloaded_at[:16].replace('T',' ') }}</small></div>
+          {% endfor %}
+          {% if not unseen %}<div class="bi"><small>{{ t('bell_empty') }}</small></div>{% endif %}
+        </div>
+      </div>
+    </div>
+      <a class="theme-btn" href="/cookies" style="text-decoration:none">🍪 {{ t('cookies_btn') }}</a>
+      <select class="langsel" id="langSel" aria-label="Language">
+        {% for code, name in langs.items() %}
+        <option value="{{ code }}" {% if code==lang %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+      <button class="theme-btn" id="themeBtn" aria-label="Toggle theme">
+        <span id="themeIcon">◐</span><span id="themeLabel">{{ t('dark') }}</span>
+      </button>
+    </div>
+  </div>
+
+  {% if not cookies_ok %}
+  <p class="notice"><b>Note:</b> {{ t('cookies_note') }} <a href="/cookies"><b>{{ t('cookies_here') }}</b></a>. {{ t('yt_note') }}</p>
+  {% endif %}
+  <div class="stats">
+    <div class="stat">
+      <div class="ic b"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+      <div><small>{{ t('stat_prospects') }}</small><b>{{ metrics.total_profiles }}</b></div>
+    </div>
+    <div class="stat">
+      <div class="ic g"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/><path d="M4 21h16"/></svg></div>
+      <div><small>{{ t('stat_videos') }}</small><b>{{ metrics.total_videos }}</b></div>
+    </div>
+    <div class="stat">
+      <div class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg></div>
+      <div><small>{{ t('stat_storage') }}</small><b>{{ metrics.storage_mb }} <span style="font-size:12px;color:var(--muted)">MB</span></b></div>
+    </div>
+    <div class="stat">
+      <div class="ic v"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10"/><path d="M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg></div>
+      <div><small>{{ t('stat_autocheck') }}</small><b style="font-size:14px">{{ t('every_minute') }}</b></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-h"><h2>{{ t('add_title') }}</h2><span>{{ t('add_sub') }}</span></div>
+    <div class="card-b">
+      <form method="post" action="/add">
+        <div class="fgrid">
+          <div><label>{{ t('f_name') }}</label><input name="name" placeholder="{{ t('f_name_ph') }}" required></div>
+          <div class="full"><label>{{ t('f_link') }}</label><input name="url" placeholder="{{ t('f_link_ph') }}" required></div>
+          <div><label>{{ t('f_every') }}</label><input name="interval" type="number" value="15" min="5" max="1440"></div>
+          <div><label>{{ t('f_quality') }}</label>
+            <select name="quality">
+              <option value="720p" selected>720p</option>
+              <option value="1080p">1080p</option>
+              <option value="480p">480p</option>
+              <option value="360p">360p</option>
+              <option value="best">Best</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end"><button class="btn" type="submit">{{ t('add_btn') }}</button></div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-h"><h2>{{ t('prosp_title') }}</h2><div style="display:flex;gap:10px;align-items:center"><a id="workers" href="/settings" title="Workers" style="font-size:12px;color:var(--muted);text-decoration:none"></a><a class="btn ghost" style="padding:8px 14px;font-size:13px" href="/check_all">{{ t('check_all') }}</a></div></div>
+    {% if profiles %}
+    <div class="twrap">
+    <table>
+      <tr><th>{{ t('c_prospect') }}</th><th>{{ t('c_platform') }}</th><th>{{ t('c_every') }}</th><th>{{ t('c_quality') }}</th><th>{{ t('c_videos') }}</th><th>{{ t('c_status') }}</th><th></th></tr>
+      {% for p in profiles %}
+      <tr>
+        <td><span class="pname">{{ p.name }}</span> {% if p.id in unseen_pids %}<span class="pill new">{{ t('new') }}</span>{% endif %}<br><span class="pfolder">{{ p.folder }}</span><br><span style="font-size:11.5px;color:var(--muted)">{{ p.last_check or t('first_dl') }}</span>
+          <div class="prog" id="prog-{{ p.id }}"><div class="bar"><div class="fill"></div></div><small></small></div>
+        </td>
+        <td><span class="badge {% if p.platform=='youtube' %}yt{% elif p.platform=='tiktok' %}tk{% elif p.platform=='instagram' %}ig{% elif p.platform=='twitter' %}tw{% endif %}">{{ p.platform }}</span></td>
+        <td>{{ p.interval_minutes or 15 }}m</td>
+        <td>{{ p.quality or '720p' }}</td>
+        <td><b>{% for m in metrics.per_profile %}{% if m.id==p.id %}{{ m.video_count }}{% endif %}{% endfor %}</b></td>
+        <td>{% if p.status=='paused' %}<span class="pill wait">{{ t('st_paused') }}</span>{% elif p.last_error %}<span class="pill err" title="{{ p.last_error }}">{{ t('st_error') }}</span>{% elif p.last_check %}<span class="pill ok">{{ t('st_ok') }}</span>{% else %}<span class="pill wait">{{ t('st_working') }}</span>{% endif %}</td>
+        <td><div class="act">
+          <a class="icon-btn" href="/check/{{ p.id }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 4v6h-6"/><path d="M20.5 15a9 9 0 1 1-2-9.4L23 10"/></svg>{{ t('check') }}</a>
+          {% if p.status=='paused' %}<a class="icon-btn" href="/resume/{{ p.id }}">▶ {{ t('resume') }}</a>{% else %}<a class="icon-btn" href="/pause/{{ p.id }}">⏸ {{ t('stop') }}</a>{% endif %}
+          <a class="icon-btn" href="/edit/{{ p.id }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>{{ t('edit') }}</a>
+          <a class="icon-btn danger" href="/delete/{{ p.id }}" onclick="return confirm('{{ t('del_confirm') }} {{ p.name }}?')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>{{ t('delete') }}</a>
+        </div></td>
+      </tr>
+      {% endfor %}
+    </table>
+    </div>
+    {% else %}
+    <div class="empty">{{ t('no_prospects') }}</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>{{ t('recent_title') }}</h2><span>{{ t('newest_first') }}</span></div>
+    {% if recent %}
+    <div class="rlist">
+      {% for v in recent %}
+      <div class="ritem">
+        <div class="thumb"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg></div>
+        <div><b>{{ v.title }} {% if not v.seen %}<span class="pill new">{{ t('new') }}</span>{% endif %}</b><small>{{ v.profile_name }} · {{ v.platform }}</small></div>
+        <time>{{ v.downloaded_at[:16].replace('T',' ') }}</time>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">{{ t('recent_empty') }}</div>
+    {% endif %}
+  </div>
+
+  <div class="foot">{{ t('foot') }} · v0.1.0</div>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeBtn'),
+      icon=document.getElementById('themeIcon'), label=document.getElementById('themeLabel');
+  var LBL={light:"{{ t('light') }}",dark:"{{ t('dark') }}"};
+  function apply(t){ root.setAttribute('data-theme',t); icon.textContent = t==='light'?'☾':'◐'; label.textContent = LBL[t]; try{localStorage.setItem('pd-theme',t)}catch(e){} }
+  var saved=null; try{saved=localStorage.getItem('pd-theme')}catch(e){}
+  if(!saved){ saved = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'; }
+  apply(saved);
+  btn.onclick=function(){ apply(root.getAttribute('data-theme')==='light'?'dark':'light'); };
+  document.getElementById('langSel').onchange=function(){ window.location.href='/lang/'+this.value; };
+})();
+(function(){
+  var bell=document.getElementById('bellBtn'), panel=document.getElementById('bellPanel');
+  bell.onclick=function(e){ e.stopPropagation(); panel.classList.toggle('on'); };
+  document.onclick=function(){ panel.classList.remove('on'); };
+  panel.onclick=function(e){ e.stopPropagation(); };
+  function esc(s){ return String(s||'').replace(/[<>&]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]}); }
+  setInterval(function(){
+    fetch('/api/jobs').then(function(r){return r.json()}).then(function(d){
+      var jobs=d.jobs||{};
+      var w=document.getElementById('workers');
+      if(w) w.textContent='⚙ '+d.workers.busy+'/'+d.workers.max+' workers';
+      document.querySelectorAll('.prog').forEach(function(el){ el.classList.remove('on'); });
+      Object.keys(jobs).forEach(function(pid){
+        var j=jobs[pid]; if(j.state!=='active') return;
+        var el=document.getElementById('prog-'+pid); if(!el) return;
+        el.classList.add('on');
+        var pct=j.pct, label='';
+        if(pct==null){
+          if(j.total>1){ pct=Math.round(j.done*100/j.total); label=j.done+'/'+j.total+' — '+j.title; }
+          else { pct=8; label=j.title; }
+        } else { label=(j.total>1?j.done+'/'+j.total+' · ':'')+j.title; }
+        el.querySelector('.fill').style.width=pct+'%';
+        el.querySelector('small').textContent=(j.stage==='listing'?'🔍 ':'⬇ ')+label;
+      });
+    }).catch(function(){});
+  },3000);
+  setInterval(function(){
+    fetch('/api/notifications').then(function(r){return r.json()}).then(function(d){
+      var c=document.getElementById('bellCount');
+      c.textContent=d.count; c.style.display=d.count?'flex':'none';
+      if(d.items && d.items.length){
+        document.getElementById('bellList').innerHTML=d.items.map(function(v){
+          return '<div class="bi"><b>'+esc(v.title)+'</b><br><small>'+esc(v.profile_name)+' · '+esc(v.platform)+'</small></div>';
+        }).join('');
+      }
+    }).catch(function(){});
+  },15000);
+})();
+</script>
+</body>
+</html>

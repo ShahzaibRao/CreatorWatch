@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.env
+
+# App runtime (personal data — never commit)
+data.db
+cookies.txt
+server.log
+downloads/
+tools/
+
+# Test/debug junk
+dash.html
+igdump.json
+igerr.txt
+twdump.json
+igtest/
+twtest/
+*.log
+*.tmp

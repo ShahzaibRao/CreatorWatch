@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="{{ lang }}" data-theme="dark">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ t('ck_title') }}</title>
+<style>
+:root{--bg:#0b0f14;--surface:#12181f;--surface2:#0e141b;--border:#212b36;--text:#e8edf2;--muted:#93a0b0;--accent:#12b981;--warn:#f5a524;--danger:#f0524f;--info:#3b9eff;--shadow:0 8px 28px rgba(0,0,0,.35);--r:14px}
+[data-theme="light"]{--bg:#eef1f4;--surface:#fff;--surface2:#f6f8fa;--border:#dfe6ec;--text:#101820;--muted:#5d6b7a;--shadow:0 8px 24px rgba(16,24,32,.08)}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,"Noto Sans SC",sans-serif;background:var(--bg);color:var(--text)}
+.wrap{max-width:640px;margin:0 auto;padding:22px 16px 60px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:8px;flex-wrap:wrap}
+h1{font-size:19px;margin:0}h2{font-size:15px;margin:0}
+a{color:var(--info);text-decoration:none}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:14px}
+.card-h{padding:14px 18px;border-bottom:1px solid var(--border)}
+.card-b{padding:16px 18px}
+.msg{padding:11px 14px;border-radius:10px;font-size:13.5px;margin-bottom:14px}
+.msg.ok{background:rgba(18,185,129,.13);color:var(--accent);border:1px solid rgba(18,185,129,.4)}
+.msg.err{background:rgba(240,82,79,.1);color:var(--danger);border:1px solid rgba(240,82,79,.4)}
+.kv{display:flex;justify-content:space-between;gap:8px;font-size:13.5px;padding:7px 0;border-bottom:1px dashed var(--border)}
+.kv:last-child{border:0}.kv span{color:var(--muted)}
+.pill{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap}
+.pill.ok{background:rgba(18,185,129,.15);color:var(--accent)}
+.pill.err{background:rgba(240,82,79,.13);color:var(--danger)}
+.pill.wait{background:rgba(245,165,36,.15);color:var(--warn)}
+textarea{width:100%;min-height:150px;padding:11px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:ui-monospace,Consolas,monospace;font-size:11.5px;resize:vertical}
+.btn{border:0;border-radius:10px;padding:11px 18px;font-weight:700;font-size:14px;cursor:pointer;background:var(--accent);color:#04281c}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn.danger{background:transparent;border:1px solid var(--danger);color:var(--danger)}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+ol{font-size:13px;color:var(--muted);line-height:1.7;margin:0;padding-left:20px}
+.trow{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13.5px}
+.trow:last-child{border:0}
+small{color:var(--muted);font-size:12px}
+.theme-btn{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600}
+select.langsel{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:9px 12px;font-size:13px;font-weight:600}
+.topbtns{display:flex;gap:8px;align-items:center;flex-wrap:nowrap}
+.topbtns .theme-btn,.topbtns .langsel{white-space:nowrap}
+@media(max-width:560px){.topbtns{gap:6px}.topbtns .theme-btn{padding:7px 9px;font-size:11.5px}.topbtns .langsel{max-width:104px;padding:7px 4px;font-size:11.5px}}
+@media(max-width:560px){.wrap{padding:14px 12px 50px}}
+</style></head>
+<body><div class="wrap">
+<div class="top"><a href="/">← {{ t('back_dash') }}</a><div class="topbtns">
+<select class="langsel" onchange="window.location.href='/lang/'+this.value">{% for code, name in langs.items() %}<option value="{{ code }}" {% if code==lang %}selected{% endif %}>{{ name }}</option>{% endfor %}</select>
+<button class="theme-btn" id="themeBtn">◐</button></div></div>
+<h1>🍪 {{ t('ck_title') }}</h1>
+<p><small>{{ t('ck_sub') }}</small></p>
+
+{% if msg %}<div class="msg {% if msg_ok %}ok{% else %}err{% endif %}">{{ msg }}</div>{% endif %}
+
+<div class="card"><div class="card-h"><h2>{{ t('ck_sites_title') }}</h2></div><div class="card-b">
+{% for key, s in info.sites.items() %}
+<div class="trow"><b>{{ s.label }}</b>
+{% if s.state=='ready' %}<span class="pill ok">✅ {{ t('pill_ready') }}</span>
+{% elif s.state=='present' %}<span class="pill ok">○ {{ t('pill_present') }}</span>
+{% elif s.state=='expired' %}<span class="pill err">⚠️ {{ t('pill_expired') }}</span>
+{% elif s.state=='login' %}<span class="pill err">❌ {{ t('pill_login') }}</span>
+{% elif s.state=='optional' %}<span class="pill wait">○ {{ t('pill_optional') }}</span>
+{% else %}<span class="pill wait">❌ {{ t('pill_missing') }}</span>{% endif %}
+</div>
+<p style="margin:2px 0 8px"><small>{{ s.detail }}</small></p>
+{% endfor %}
+</div></div>
+
+<div class="card"><div class="card-h"><h2>{{ t('ck_status') }}</h2></div><div class="card-b">
+{% if info.exists %}
+<div class="kv"><span>{{ t('ck_file') }}</span><b>cookies.txt <span class="pill ok">{{ t('ck_active') }}</span></b></div>
+<div class="kv"><span>{{ t('ck_format') }}</span><b>{% if info.header_ok %}Netscape OK{% else %}<span class="pill err">{{ t('ck_format_bad') }}</span>{% endif %}</b></div>
+<div class="kv"><span>{{ t('ck_usable') }}</span><b>{{ info.usable }}</b></div>
+<div class="kv"><span>{{ t('ck_expired') }}</span><b>{{ info.expired }}</b></div>
+<div class="kv"><span>{{ t('ck_sites') }}</span><b style="font-size:12px">{{ info.domains|join(', ') or '—' }}</b></div>
+<div class="kv"><span>{{ t('ck_size') }}</span><b>{{ info.size_kb }} KB · {{ info.updated }}</b></div>
+{% else %}
+<div class="kv"><span>{{ t('ck_file') }}</span><b><span class="pill wait">{{ t('ck_notinstalled') }}</span></b></div>
+<p><small>{{ t('ck_no_cookies') }}</small></p>
+{% endif %}
+</div></div>
+
+<div class="card"><div class="card-h"><h2>{{ t('ck_live') }}</h2></div><div class="card-b">
+<p><small>{{ t('ck_live_sub') }}</small></p>
+<div class="row"><a class="btn ghost" style="padding:10px 16px" href="/cookies?test=1">🔍 {{ t('ck_test') }}</a></div>
+{% for plat, r in tests.items() %}
+<div class="trow"><b>{{ plat }}</b><span class="pill {% if r.ok %}ok{% else %}err{% endif %}">{% if r.ok %}{{ t('ck_valid') }}{% else %}{{ t('ck_invalid') }}{% endif %}</span></div>
+<p><small>{{ r.detail }}</small></p>
+{% endfor %}
+</div></div>
+
+<div class="card"><div class="card-h"><h2>{{ t('ck_import') }}</h2></div><div class="card-b">
+<ol>
+<li>{{ t('ck_step1') }}</li>
+<li>{{ t('ck_step2') }}</li>
+<li>{{ t('ck_step3') }}</li>
+</ol>
+<form method="post" style="margin-top:12px">
+<textarea name="cookies" placeholder="# Netscape HTTP Cookie File"></textarea>
+<div class="row"><button class="btn" type="submit">💾 {{ t('ck_save') }}</button></div>
+</form>
+{% if info.exists %}
+<form method="post" action="/cookies/delete" onsubmit="return confirm('{{ t('ck_delete_confirm') }}')">
+<div class="row"><button class="btn danger" type="submit">🗑 {{ t('ck_delete') }}</button></div>
+</form>
+{% endif %}
+</div></div>
+</div>
+<script>
+(function(){var r=document.documentElement,b=document.getElementById('themeBtn');function a(t){r.setAttribute('data-theme',t);try{localStorage.setItem('pd-theme',t)}catch(e){}}var s=null;try{s=localStorage.getItem('pd-theme')}catch(e){}if(!s){s=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'}a(s);b.onclick=function(){a(r.getAttribute('data-theme')==='light'?'dark':'light')}})();
+</script>
+</body></html>

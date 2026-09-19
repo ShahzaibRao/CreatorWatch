@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="{{ lang }}" data-theme="dark">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ t('s_title') }}</title>
+<style>
+:root{--bg:#0b0f14;--surface:#12181f;--surface2:#0e141b;--border:#212b36;--text:#e8edf2;--muted:#93a0b0;--accent:#12b981;--shadow:0 8px 28px rgba(0,0,0,.35);--r:14px}
+[data-theme="light"]{--bg:#eef1f4;--surface:#fff;--surface2:#f6f8fa;--border:#dfe6ec;--text:#101820;--muted:#5d6b7a;--shadow:0 8px 24px rgba(16,24,32,.08)}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,"Noto Sans SC",sans-serif;background:var(--bg);color:var(--text)}
+.wrap{max-width:560px;margin:0 auto;padding:22px 16px 60px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:8px;flex-wrap:wrap}
+h1{font-size:19px;margin:0}
+a{color:#3b9eff;text-decoration:none}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:20px;margin-bottom:14px}
+label{font-size:13px;font-weight:600;display:block;margin:12px 0 8px}
+label:first-of-type{margin-top:0}
+input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:16px}
+button{width:100%;margin-top:14px;border:0;border-radius:10px;padding:12px;font-weight:700;font-size:15px;cursor:pointer;background:var(--accent);color:#04281c}
+.msg{padding:11px 14px;border-radius:10px;font-size:13.5px;margin-bottom:14px;background:rgba(18,185,129,.13);color:var(--accent);border:1px solid rgba(18,185,129,.4)}
+.tip{font-size:13px;color:var(--muted);line-height:1.7;margin:4px 0}
+.tip b{color:var(--text)}
+.scale{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-top:6px}
+.theme-btn{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600}
+select.langsel{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:9px 12px;font-size:13px;font-weight:600}
+.topbtns{display:flex;gap:8px;align-items:center;flex-wrap:nowrap}
+.topbtns .theme-btn,.topbtns .langsel{white-space:nowrap}
+@media(max-width:560px){.topbtns{gap:6px}.topbtns .theme-btn{padding:7px 9px;font-size:11.5px}.topbtns .langsel{max-width:104px;padding:7px 4px;font-size:11.5px}}
+@media(max-width:560px){.wrap{padding:14px 12px 50px}}
+</style></head>
+<body><div class="wrap">
+<div class="top"><a href="/">← {{ t('back_dash') }}</a><div class="topbtns">
+<select class="langsel" onchange="window.location.href='/lang/'+this.value">{% for code, name in langs.items() %}<option value="{{ code }}" {% if code==lang %}selected{% endif %}>{{ name }}</option>{% endfor %}</select>
+<button class="theme-btn" id="themeBtn">◐</button></div></div>
+<h1>⚙ {{ t('s_title') }}</h1>
+<p class="tip">{{ t('s_sub') }}</p>
+{% if msg %}<div class="msg">{{ msg }}</div>{% endif %}
+<div class="card">
+<form method="post">
+<label>{{ t('s_workers') }} (1–10)</label>
+<input name="max_workers" type="number" value="{{ n }}" min="1" max="10" required>
+<button type="submit">💾 {{ t('s_save') }}</button>
+</form>
+</div>
+<div class="card">
+<p class="tip">🐢 {{ t('s_slow') }}</p>
+<p class="tip">🚀 {{ t('s_fast') }}</p>
+<p class="tip">✅ {{ t('s_normal') }}</p>
+</div>
+
+<div class="card">
+<h2 style="font-size:15px;margin:0 0 4px">🧮 {{ t('s_calc') }}</h2>
+<p class="tip">{{ t('s_calc_sub') }}</p>
+<form method="post" action="/settings/calc">
+<label>{{ t('s_cores') }} ({{ cores }} {{ t('s_detected') }})</label>
+<input name="cores" type="number" value="{{ suggestion.cores if suggestion else cores }}" min="1" max="64" required>
+<label>{{ t('s_ram') }}</label>
+<input name="ram" type="number" step="0.5" value="{{ suggestion.ram if suggestion else 8 }}" min="1" max="512" required>
+<label>{{ t('s_speed') }}</label>
+<input name="speed" type="number" step="1" value="{{ suggestion.speed if suggestion else 50 }}" min="1" max="10000" required>
+<button type="submit">🧮 {{ t('s_calc_btn') }}</button>
+</form>
+{% if suggestion %}
+<div class="msg" style="margin-top:14px">{{ t('s_suggested') }}: <b style="font-size:18px">{{ suggestion.n }} {{ t('s_workers_word') }}</b> (bottleneck: {{ suggestion.why }})<br>
+<small style="color:var(--muted)">CPU→{{ suggestion.by_cpu }} · RAM→{{ suggestion.by_ram }} · Net→{{ suggestion.by_net }}</small></div>
+<form method="post" action="/settings/apply">
+<input type="hidden" name="n" value="{{ suggestion.n }}">
+<button type="submit">✅ {{ suggestion.n }} {{ t('s_apply') }}</button>
+</form>
+{% endif %}
+</div>
+</div>
+<script>
+(function(){var r=document.documentElement,b=document.getElementById('themeBtn');function a(t){r.setAttribute('data-theme',t);try{localStorage.setItem('pd-theme',t)}catch(e){}}var s=null;try{s=localStorage.getItem('pd-theme')}catch(e){}if(!s){s=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'}a(s);b.onclick=function(){a(r.getAttribute('data-theme')==='light'?'dark':'light')}})();
+</script>
+</body></html>
