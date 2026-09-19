@@ -83,6 +83,8 @@ Server: `http://127.0.0.1:5000` (Flask dev server, local use ke liye).
 17. ✅ v0.1.0 production release → https://github.com/ShahzaibRao/CreatorWatch.git (main + tag v0.1.0, .gitignore, footer version)
 18. ✅ Multi-language READMEs: README.md (EN) + README.ur/es/zh.md with nav bar (main branch, post-v0.1.0)
 19. ✅ EXE + auto-update: paths.py (frozen user-data dir), PyInstaller onefile (54MB, templates+gallery-dl+ffmpeg bundled), gallery-dl in-process when frozen, EXE auto-opens browser, /updates page (GitHub release check, .exe download+restart updater, engine pip upgrade in source mode), 2-way install docs (source vs Releases EXE)
+20. ✅ Desktop app: pywebview window (same UI, no browser needed, --app flag for source, browser fallback), engines.py (PyPI wheels -> tools/pylibs, external/bundled switch, restart), Inno Setup script (installer/CreatorWatch.iss, shortcuts, launch-after-install), 💻 Download button (release tag link) in webapp header
+21. ✅ Real installer (SaaS-ready desktop): Inno 6.7 installed+compiled → installer/CreatorWatch-Setup-0.1.0.exe (58MB), silent-install tested (shortcuts+uninstaller+data.db in install dir), desktop window polls APIs (GUI verified via logs), "Install Required Packages" first-run state verified
 
 ---
 
