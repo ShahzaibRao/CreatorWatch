@@ -6,6 +6,7 @@ venv/
 
 # App runtime (personal data — never commit)
 data.db
+data.db-journal
 cookies.txt
 server.log
 downloads/
