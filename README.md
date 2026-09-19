@@ -8,6 +8,10 @@ then only **new uploads** are downloaded on every interval.
 
 ---
 
+## Install options (2 ways)
+1. **Source:** clone this repo → follow Setup below → web mode at http://127.0.0.1:5000 (`pip install -r requirements.txt` installs everything).
+2. **EXE (easy):** download `CreatorWatch.exe` from [Releases](https://github.com/ShahzaibRao/CreatorWatch/releases) → double-click → the same interface opens in your browser automatically. No Python needed. Updates come from inside the app (⬆ Updates page).
+
 ## 1. Setup (first time)
 
 ```bash

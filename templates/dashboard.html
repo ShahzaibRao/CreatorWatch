@@ -145,6 +145,7 @@ tr:last-child td{border-bottom:0}
       </div>
     </div>
       <a class="theme-btn" href="/cookies" style="text-decoration:none">🍪 {{ t('cookies_btn') }}</a>
+    <a class="theme-btn" href="/updates" style="text-decoration:none">⬆ Updates</a>
       <select class="langsel" id="langSel" aria-label="Language">
         {% for code, name in langs.items() %}
         <option value="{{ code }}" {% if code==lang %}selected{% endif %}>{{ name }}</option>
@@ -249,7 +250,7 @@ tr:last-child td{border-bottom:0}
     {% endif %}
   </div>
 
-  <div class="foot">{{ t('foot') }} · v0.1.0</div>
+  <div class="foot">{{ t('foot') }} · v{{ version }}</div>
 </div>
 
 <script>

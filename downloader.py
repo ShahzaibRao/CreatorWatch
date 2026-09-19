@@ -1,9 +1,10 @@
 import os
 import re
 import yt_dlp
+from paths import app_dir
 from database import video_exists, add_video, update_last_check
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = app_dir()
 DOWNLOADS_ROOT = os.path.join(BASE_DIR, "downloads")
 
 def detect_platform(url: str) -> str:
@@ -161,6 +162,29 @@ def _env_with_ffmpeg():
 
 def _gdl(args, timeout=300):
     import subprocess, sys
+    from paths import is_frozen
+    if is_frozen():
+        # exe me alag python nahi — gallery-dl in-process chalao, output capture
+        import io, contextlib
+        from gallery_dl import __main__ as gdl_main
+        out_buf, err_buf = io.StringIO(), io.StringIO()
+        rc = 1
+        with contextlib.redirect_stdout(out_buf), contextlib.redirect_stderr(err_buf):
+            try:
+                rc = gdl_main.main(args) or 0
+            except SystemExit as e:
+                try:
+                    rc = int(e.code or 0)
+                except (TypeError, ValueError):
+                    rc = 1
+            except Exception as e:
+                err_buf.write(f"gallery-dl error: {e}")
+                rc = 1
+        class R:
+            pass
+        r = R()
+        r.returncode, r.stdout, r.stderr = rc, out_buf.getvalue(), err_buf.getvalue()
+        return r
     cmd = [sys.executable, "-m", "gallery_dl"] + args
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
                           cwd=BASE_DIR, env=_env_with_ffmpeg())

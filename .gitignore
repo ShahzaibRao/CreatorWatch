@@ -11,6 +11,14 @@ server.log
 downloads/
 tools/
 
+# Build output (EXE GitHub Release asset me jayega, git me nahi)
+dist/
+build/
+*.spec
+*.exe
+CreatorWatch.new.exe
+_cw_update.bat
+
 # Test/debug junk
 dash.html
 igdump.json

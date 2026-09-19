@@ -8,6 +8,10 @@ luego solo las **nuevas subidas** en cada intervalo.
 
 ---
 
+## Instalación (2 formas)
+1. **Código:** clona el repo → sigue Setup → modo web en http://127.0.0.1:5000.
+2. **EXE (fácil):** descarga `CreatorWatch.exe` de [Releases](https://github.com/ShahzaibRao/CreatorWatch/releases) → doble clic → la misma interfaz se abre sola. Sin Python. Actualizaciones desde la app (⬆ Updates).
+
 ## 1. Instalación (primera vez)
 
 ```bash

@@ -6,8 +6,12 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, g
 from apscheduler.schedulers.background import BackgroundScheduler
 import yt_dlp
 import database as db
+from paths import app_dir, is_frozen
 from translations import LANGS, text as _text
 from downloader import detect_platform, prospect_folder, check_profile, check_all_profiles, check_due_profiles, first_run
+
+VERSION = "0.1.0"
+REPO = "ShahzaibRao/CreatorWatch"
 
 app = Flask(__name__)
 db.init_db()
@@ -47,7 +51,7 @@ RUNNING_LOCK = threading.Lock()
 def max_workers():
     return db.get_max_workers()
 
-COOKIES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt")
+COOKIES_PATH = os.path.join(app_dir(), "cookies.txt")
 
 TEST_URLS = {
     "instagram": "https://www.instagram.com/instagram/",
@@ -262,7 +266,7 @@ def dashboard():
     unseen_pids = db.unseen_profiles()
     cookies_ok = os.path.exists(os.path.join(os.path.dirname(__file__), "cookies.txt"))
     return render_template("dashboard.html", profiles=profiles, metrics=metrics,
-                           recent=recent, cookies_ok=cookies_ok,
+                           recent=recent, cookies_ok=cookies_ok, version=VERSION,
                            unseen=unseen, unseen_pids=unseen_pids)
 
 @app.route("/add", methods=["POST"])
@@ -451,6 +455,118 @@ def cookies_delete():
 def api_metrics():
     return jsonify(db.get_metrics())
 
+def engine_versions():
+    out = {}
+    try:
+        from yt_dlp.version import __version__ as yv
+        out["yt-dlp"] = yv
+    except Exception:
+        out["yt-dlp"] = "?"
+    try:
+        import gallery_dl
+        out["gallery-dl"] = getattr(gallery_dl, "__version__", "?")
+    except Exception:
+        out["gallery-dl"] = "?"
+    return out
+
+def latest_release():
+    """GitHub latest release (15s timeout). Returns dict or {} on fail."""
+    import json
+    import urllib.request
+    try:
+        req = urllib.request.Request(
+            f"https://api.github.com/repos/{REPO}/releases/latest",
+            headers={"User-Agent": "CreatorWatch", "Accept": "application/vnd.github+json"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return json.load(r)
+    except Exception as e:
+        return {"error": str(e)[:200]}
+
+def _ver_tuple(v):
+    try:
+        return tuple(int(x) for x in str(v).lstrip("v").split("."))
+    except Exception:
+        return (0,)
+
+@app.route("/updates", methods=["GET", "POST"])
+def updates_page():
+    msg, msg_ok, rel = "", False, {}
+    action = request.form.get("action", "") if request.method == "POST" else ""
+    if action == "check" or request.method == "GET":
+        rel = latest_release()
+    if action == "engines":
+        if is_frozen():
+            msg, msg_ok = "EXE me engines bundled hain — app update ke sath naye milenge", False
+        else:
+            msg, msg_ok = _upgrade_engines()
+        rel = latest_release()
+    if action == "app" and is_frozen():
+        ok, detail = _download_update(rel or latest_release())
+        msg, msg_ok = detail, ok
+        rel = rel or {}
+    if action == "restart" and is_frozen():
+        _apply_update_restart()
+        return "<h2>Update apply ho rahi hai — app restart ho rahi hai. 10 sec me dashboard kholo.</h2><a href='/'>Dashboard</a>"
+    latest = (rel.get("tag_name", "") if isinstance(rel, dict) else "") or ""
+    has_update = bool(latest) and _ver_tuple(latest) > _ver_tuple(VERSION)
+    pending = os.path.exists(os.path.join(app_dir(), "CreatorWatch.new.exe"))
+    return render_template("updates.html", version=VERSION, latest=latest or "—",
+                           has_update=has_update, notes=(rel.get("body", "") or "")[:1500] if isinstance(rel, dict) else "",
+                           engines=engine_versions(), frozen=is_frozen(),
+                           pending=pending, msg=msg, msg_ok=msg_ok,
+                           rel_error=(rel.get("error", "") if isinstance(rel, dict) else ""))
+
+def _upgrade_engines():
+    """Source mode: pip se yt-dlp + gallery-dl upgrade (engines purane hon to site fail hoti hai)."""
+    import subprocess, sys
+    try:
+        p = subprocess.run([sys.executable, "-m", "pip", "install", "-U", "yt-dlp", "gallery-dl"],
+                           capture_output=True, text=True, timeout=600)
+        tail = (p.stdout + p.stderr)[-500:]
+        if p.returncode == 0:
+            return f"Engines updated: {engine_versions()}", True
+        return f"Engine update fail: {tail}", False
+    except Exception as e:
+        return f"Engine update fail: {e}", False
+
+def _download_update(rel):
+    """Frozen: release asset (CreatorWatch.exe) download -> .new.exe."""
+    import urllib.request
+    try:
+        assets = rel.get("assets", []) if isinstance(rel, dict) else []
+        url = ""
+        for a in assets:
+            if str(a.get("name", "")).lower().endswith(".exe"):
+                url = a.get("browser_download_url", "")
+                break
+        if not url:
+            return False, "Release me .exe asset nahi mili"
+        dest = os.path.join(app_dir(), "CreatorWatch.new.exe")
+        req = urllib.request.Request(url, headers={"User-Agent": "CreatorWatch"})
+        with urllib.request.urlopen(req, timeout=600) as r, open(dest, "wb") as f:
+            while True:
+                chunk = r.read(1024 * 256)
+                if not chunk:
+                    break
+                f.write(chunk)
+        return True, "Update download ho gayi — Restart dabao"
+    except Exception as e:
+        return False, f"Download fail: {e}"
+
+def _apply_update_restart():
+    """Old exe ko .new se replace karke restart (batch detached)."""
+    import subprocess
+    d = app_dir()
+    bat = os.path.join(d, "_cw_update.bat")
+    open(bat, "w").write(
+        "@echo off\ntimeout /t 3 /nobreak >nul\n"
+        'move /y "CreatorWatch.new.exe" "CreatorWatch.exe"\n'
+        'start "" "CreatorWatch.exe"\ndel "%~f0"\n')
+    subprocess.Popen(["cmd", "/c", bat], cwd=d,
+                     creationflags=getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    threading.Timer(2.0, lambda: os._exit(0)).start()
+
 def start_scheduler():
     sched = BackgroundScheduler(daemon=True)
     # har 1 min me due profiles pool me submit (max limit, busy skip)
@@ -463,4 +579,8 @@ if __name__ == "__main__":
     print("Dashboard: http://127.0.0.1:5000")
     print("Downloads folder: ./downloads/")
     print(f"Workers: {max_workers()} parallel profiles (per-profile sequential)")
+    if is_frozen():
+        # desktop mode: same web interface, browser khud khul jaye
+        import webbrowser
+        threading.Timer(1.5, lambda: webbrowser.open("http://127.0.0.1:5000")).start()
     app.run(host="127.0.0.1", port=5000, debug=False, threaded=True)

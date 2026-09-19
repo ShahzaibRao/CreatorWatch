@@ -7,6 +7,10 @@
 
 ---
 
+## 安装方式(2 种)
+1. **源码:** clone 仓库 → 按下面 Setup → 网页模式 http://127.0.0.1:5000。
+2. **EXE(简单):** 从 [Releases](https://github.com/ShahzaibRao/CreatorWatch/releases) 下载 `CreatorWatch.exe` → 双击 → 同样界面自动打开。无需 Python。应用内更新(⬆ Updates)。
+
 ## 1. 安装(首次)
 
 ```bash

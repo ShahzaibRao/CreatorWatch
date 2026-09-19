@@ -1,8 +1,9 @@
 import sqlite3
 import os
 from datetime import datetime
+from paths import app_dir
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "data.db")
+DB_PATH = os.path.join(app_dir(), "data.db")
 
 def get_conn():
     conn = sqlite3.connect(DB_PATH)
