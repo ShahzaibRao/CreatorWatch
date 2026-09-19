@@ -36,8 +36,34 @@ def sanitize(name: str) -> str:
     name = name.strip().replace(" ", "_")
     return re.sub(r"[^\w\-]", "", name)[:50] or "prospect"
 
-def prospect_folder(name: str, platform: str) -> str:
-    folder = os.path.join(DOWNLOADS_ROOT, f"{platform}_{sanitize(name)}")
+def resolve_folder(custom):
+    """User di hui location (absolute/relative/drive) validate karke wapas. Fail -> (None, reason)."""
+    c = (custom or "").strip().strip('"')
+    if not c:
+        return None, ""
+    if not os.path.isabs(c):
+        c = os.path.join(BASE_DIR, c)
+    try:
+        os.makedirs(c, exist_ok=True)
+    except Exception as e:
+        return None, str(e)[:150]
+    if not os.path.isdir(c):
+        return None, "folder nahi bana"
+    return os.path.abspath(c), ""
+
+def prospect_folder(name: str, platform: str, custom: str = "") -> str:
+    if custom:
+        folder, _err = resolve_folder(custom)
+        if folder:
+            return folder
+    from database import get_downloads_root
+    root = get_downloads_root()
+    try:
+        os.makedirs(root, exist_ok=True)
+    except Exception:
+        root = os.path.join(BASE_DIR, "downloads")
+        os.makedirs(root, exist_ok=True)
+    folder = os.path.join(root, f"{platform}_{sanitize(name)}")
     os.makedirs(folder, exist_ok=True)
     return folder
 

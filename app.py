@@ -1,10 +1,19 @@
 import os
+import sys
 import time
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from flask import Flask, render_template, request, redirect, url_for, jsonify, g
 from apscheduler.schedulers.background import BackgroundScheduler
 from paths import app_dir, is_frozen, ensure_pylibs
+
+if is_frozen():
+    # windowed exe (no console): prints -> server.log, warna crash hota hai
+    try:
+        _log = open(os.path.join(app_dir(), "server.log"), "a", encoding="utf-8", errors="ignore")
+        sys.stdout = sys.stderr = _log
+    except Exception:
+        pass
 ensure_pylibs()  # exe: updated engines (tools/pylibs) bundled se pehle load hon
 import yt_dlp
 import database as db
@@ -268,7 +277,8 @@ def dashboard():
     cookies_ok = os.path.exists(os.path.join(os.path.dirname(__file__), "cookies.txt"))
     return render_template("dashboard.html", profiles=profiles, metrics=metrics,
                            recent=recent, cookies_ok=cookies_ok, version=VERSION,
-                           unseen=unseen, unseen_pids=unseen_pids)
+                           unseen=unseen, unseen_pids=unseen_pids,
+                           msg=request.args.get("msg", ""), msg_ok=request.args.get("ok", "") == "1")
 
 @app.route("/add", methods=["POST"])
 def add():
@@ -285,7 +295,15 @@ def add():
     if not name or not url:
         return redirect(url_for("dashboard"))
     platform = detect_platform(url)
-    folder = prospect_folder(name, platform)
+    folder_in = request.form.get("folder", "").strip()
+    if folder_in:
+        from downloader import resolve_folder
+        folder_ok, err = resolve_folder(folder_in)
+        if not folder_ok:
+            return redirect(url_for("dashboard", msg=f"Folder ghalat hai: {err}", ok="0"))
+        folder = folder_ok
+    else:
+        folder = prospect_folder(name, platform)
     pid = db.add_profile(name, platform, url, folder, interval, quality)
     if pid:
         # first-time latest download pool worker me (user ko wait nahi karna)
@@ -308,7 +326,15 @@ def edit(pid):
         except ValueError:
             interval = 15
         interval = max(5, min(interval, 1440))
-        db.update_profile(pid, name, url, interval, quality)
+        folder_in = request.form.get("folder", "").strip()
+        folder = None
+        if folder_in and folder_in != p["folder"]:
+            from downloader import resolve_folder
+            folder_ok, err = resolve_folder(folder_in)
+            if not folder_ok:
+                return render_template("edit.html", p=p, msg=f"Folder ghalat hai: {err}")
+            folder = folder_ok
+        db.update_profile(pid, name, url, interval, quality, folder)
         return redirect(url_for("dashboard"))
     return render_template("edit.html", p=p)
 
@@ -357,15 +383,32 @@ def settings():
     import os as _os
     msg = ""
     if request.method == "POST":
-        try:
-            n = int(request.form.get("max_workers", "3"))
-        except ValueError:
-            n = 3
-        n = max(1, min(n, 10))
-        db.set_setting("max_workers", n)
-        msg = f"Save ho gaya: {n} parallel workers"
+        if "downloads_root" in request.form:
+            root = request.form.get("downloads_root", "").strip().strip('"')
+            if root:
+                from downloader import resolve_folder
+                ok, err = resolve_folder(root)
+                if ok:
+                    db.set_downloads_root(ok)
+                    msg = f"Save location set: {ok}"
+                else:
+                    msg = f"Location ghalat hai: {err}"
+            else:
+                db.set_downloads_root("")
+                msg = "Default location wapas"
+        else:
+            try:
+                n = int(request.form.get("max_workers", "3"))
+            except ValueError:
+                n = 3
+            n = max(1, min(n, 10))
+            db.set_setting("max_workers", n)
+            msg = f"Save ho gaya: {n} parallel workers"
+    root = db.get_downloads_root()
+    free_gb, total_gb = db.disk_free_gb(root)
     return render_template("settings.html", n=max_workers(), msg=msg,
-                           suggestion=None, cores=_os.cpu_count() or 4)
+                           suggestion=None, cores=_os.cpu_count() or 4,
+                           root=root, free_gb=free_gb, total_gb=total_gb)
 
 def suggest_workers(cores, ram_gb, speed_mbps):
     """Bottleneck = sab se choti value. 1 core system ke liye chhoro."""
@@ -396,7 +439,10 @@ def settings_calc():
         speed = 50
     s = suggest_workers(cores, ram, speed)
     s.update({"cores": cores, "ram": ram, "speed": speed})
-    return render_template("settings.html", n=max_workers(), msg="", suggestion=s, cores=cores)
+    root = db.get_downloads_root()
+    free_gb, total_gb = db.disk_free_gb(root)
+    return render_template("settings.html", n=max_workers(), msg="", suggestion=s, cores=cores,
+                           root=root, free_gb=free_gb, total_gb=total_gb)
 
 @app.route("/settings/apply", methods=["POST"])
 def settings_apply():
@@ -405,8 +451,12 @@ def settings_apply():
     except ValueError:
         n = 3
     db.set_setting("max_workers", n)
+    import os as _os2
+    root = db.get_downloads_root()
+    free_gb, total_gb = db.disk_free_gb(root)
     return render_template("settings.html", n=n, msg=f"Apply ho gaya: {n} parallel workers",
-                           suggestion=None, cores=__import__("os").cpu_count() or 4)
+                           suggestion=None, cores=_os2.cpu_count() or 4,
+                           root=root, free_gb=free_gb, total_gb=total_gb)
 
 @app.route("/api/notifications")
 def api_notifications():

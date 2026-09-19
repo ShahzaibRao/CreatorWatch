@@ -81,6 +81,27 @@ def get_max_workers():
     except (TypeError, ValueError):
         return 3
 
+def get_downloads_root():
+    """Global save location (user setting) ya default ./downloads."""
+    import os as _os
+    from paths import app_dir as _ad
+    root = get_setting("downloads_root", "") or ""
+    root = root.strip()
+    if not root:
+        root = _os.path.join(_ad(), "downloads")
+    return root
+
+def set_downloads_root(path):
+    set_setting("downloads_root", path)
+
+def disk_free_gb(path):
+    import shutil
+    try:
+        u = shutil.disk_usage(path if os.path.exists(path) else os.path.dirname(path) or ".")
+        return round(u.free / (1024 ** 3), 1), round(u.total / (1024 ** 3), 1)
+    except Exception:
+        return None, None
+
 def add_profile(name, platform, url, folder, interval_minutes=15, quality="720p"):
     conn = get_conn()
     cur = conn.cursor()
@@ -96,13 +117,19 @@ def add_profile(name, platform, url, folder, interval_minutes=15, quality="720p"
     conn.close()
     return pid
 
-def update_profile(pid, name, url, interval_minutes, quality):
-    """Edit: name/url/interval/quality update. Folder wahi rehta hai."""
+def update_profile(pid, name, url, interval_minutes, quality, folder=None):
+    """Edit: name/url/interval/quality (+optional folder) update."""
     conn = get_conn()
-    conn.execute(
-        "UPDATE profiles SET name=?, url=?, interval_minutes=?, quality=?, platform=? WHERE id=?",
-        (name, url, int(interval_minutes or 15), quality or "720p", _platform(url), pid)
-    )
+    if folder:
+        conn.execute(
+            "UPDATE profiles SET name=?, url=?, interval_minutes=?, quality=?, platform=?, folder=? WHERE id=?",
+            (name, url, int(interval_minutes or 15), quality or "720p", _platform(url), folder, pid)
+        )
+    else:
+        conn.execute(
+            "UPDATE profiles SET name=?, url=?, interval_minutes=?, quality=?, platform=? WHERE id=?",
+            (name, url, int(interval_minutes or 15), quality or "720p", _platform(url), pid)
+        )
     conn.commit()
     conn.close()
 

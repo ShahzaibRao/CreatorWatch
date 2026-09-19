@@ -28,8 +28,10 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 <h1>{{ t('e_title') }}: {{ p.name }}</h1>
 <p style="color:var(--muted);font-size:13px">{{ t('e_sub') }}</p>
 <div class="card"><form method="post">
+{% if msg %}<p style="color:#f0524f;font-size:13px">{{ msg }}</p>{% endif %}
 <label>{{ t('e_name') }}</label><input name="name" value="{{ p.name }}" required>
 <label>{{ t('e_link') }}</label><input name="url" value="{{ p.url }}" required>
+<label>Save folder</label><input name="folder" value="{{ p.folder }}">
 <label>{{ t('e_interval') }}</label><input name="interval" type="number" value="{{ p.interval_minutes or 15 }}" min="5" max="1440">
 <label>{{ t('e_quality') }}</label>
 <select name="quality">
