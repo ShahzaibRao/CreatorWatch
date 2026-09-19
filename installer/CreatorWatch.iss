@@ -2,7 +2,9 @@
 ; Build: install Inno Setup -> open this file -> Compile
 ; Needs: ..\dist\CreatorWatch.exe (pyinstaller build)
 
-#define AppVersion "0.1.0"
+#ifndef AppVersion
+#define AppVersion "0.2.0"
+#endif
 
 [Setup]
 AppName=CreatorWatch
