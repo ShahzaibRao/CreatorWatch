@@ -88,6 +88,7 @@ Server: `http://127.0.0.1:5000` (Flask dev server, local use ke liye).
 22. ✅ Custom save locations: global downloads_root setting + per-profile folder (Add/Edit forms, validation), free-space display (GB) on /settings, windowed rebuild+installer recompiled+install-tested, merged remote main.yml (GitHub Actions)
 23. ✅ Runner builds: .github/workflows/release.yml (tag v* → pyinstaller exe + Inno setup → Release assets), empty main.yml removed, VERSION 0.2.0, tag v0.2.0 pushed → RELEASE LIVE with CreatorWatch.exe (57MB) + CreatorWatch-Setup-0.2.0.exe (58MB)
 24. ✅ Save UX: nested <root>/<platform>/<creator>/ folders (purane wese hi), 📁 Browse native picker (pywebview js_api + tkinter, browser me hidden), live download speed (yt-dlp hook → jobs API → progress label), storage total sab locations se; windowed rebuild + Setup-0.2.0 installer compiled+install-tested
+25. ✅ Select-button picker: manual paste ki jaga 📁 Select button (readonly field, browser fallback editable), default root downloads/CreatorWatch/, rebuilt exe+installer, install-tested
 
 ---
 

@@ -82,13 +82,12 @@ def get_max_workers():
         return 3
 
 def get_downloads_root():
-    """Global save location (user setting) ya default ./downloads/CreatorWatch."""
+    """Global save location (user setting) ya default ~/Downloads/CreatorWatch."""
     import os as _os
-    from paths import app_dir as _ad
     root = get_setting("downloads_root", "") or ""
     root = root.strip()
     if not root:
-        root = _os.path.join(_ad(), "downloads", "CreatorWatch")
+        root = _os.path.join(_os.path.expanduser("~"), "Downloads", "CreatorWatch")
     return root
 
 def set_downloads_root(path):
