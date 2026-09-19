@@ -189,8 +189,8 @@ tr:last-child td{border-bottom:0}
           <div><label>{{ t('f_name') }}</label><input name="name" placeholder="{{ t('f_name_ph') }}" required></div>
           <div class="full"><label>{{ t('f_link') }}</label><input name="url" placeholder="{{ t('f_link_ph') }}" required></div>
           <div><label>{{ t('f_every') }}</label><input name="interval" type="number" value="15" min="5" max="1440"></div>
-          <div class="full"><label>Save folder (optional — khali to default; D:\Videos jesi drive/path bhi de sakte ho)</label>
-            <div style="display:flex;gap:8px"><input id="addFolder" name="folder" placeholder="default: downloads/…"><button type="button" class="btn ghost browse-btn" data-target="addFolder" style="display:none;white-space:nowrap">📁 Browse</button></div>
+          <div class="full"><label>Save folder (default: downloads/CreatorWatch/… — Browse se drive/folder select karo)</label>
+            <div style="display:flex;gap:8px"><input id="addFolder" name="folder" placeholder="default: downloads/CreatorWatch/…" readonly><button type="button" class="btn ghost browse-btn" data-target="addFolder" style="white-space:nowrap">📁 Select</button></div>
           </div>
           <div><label>{{ t('f_quality') }}</label>
             <select name="quality">
@@ -278,8 +278,10 @@ tr:last-child td{border-bottom:0}
   function esc(s){ return String(s||'').replace(/[<>&]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]}); }
   function fmtSpeed(b){ if(b==null||isNaN(b)||b<=0) return ''; if(b>1048576) return (b/1048576).toFixed(1)+' MB/s'; if(b>1024) return (b/1024).toFixed(0)+' KB/s'; return b+' B/s'; }
   if(window.pywebview){ document.querySelectorAll('.browse-btn').forEach(function(b){
-    b.style.display='';
     b.onclick=function(){ window.pywebview.api.pick_folder().then(function(p){ if(p) document.getElementById(b.dataset.target).value=p; }); };
+  }); } else { document.querySelectorAll('.browse-btn').forEach(function(b){
+    b.style.display='none';
+    var inp=document.getElementById(b.dataset.target); if(inp){ inp.removeAttribute('readonly'); inp.placeholder='path paste karo (browser mode)'; }
   }); }
   setInterval(function(){
     fetch('/api/jobs').then(function(r){return r.json()}).then(function(d){
