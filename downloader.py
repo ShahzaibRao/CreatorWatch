@@ -83,13 +83,76 @@ def _ydl_opts_flat():
         opts["cookiefile"] = ck
     return opts
 
-def fetch_latest_entries(profile_url: str):
-    """Return list of {id, title, url} for latest videos (max 10)."""
+def detect_scope(url: str) -> str:
+    """Link type se scope: channel -> both, shorts link -> shorts, video link -> videos."""
+    low = (url or "").lower()
+    if "youtube.com" not in low and "youtu.be" not in low:
+        return "both"
+    if "/shorts" in low:
+        return "shorts"
+    if "/videos" in low or "/streams" in low:
+        return "videos"
+    if "/watch" in low or "youtu.be/" in low or "/live/" in low:
+        return "videos"
+    return "both"  # channel root
+
+def _yt_base(url: str):
+    """Kisi bhi YouTube link se channel root nikalo. Returns (base, is_channel)."""
+    u = url.strip().rstrip("/")
+    m = re.search(r"(https?://(?:www\.)?youtube\.com/(?:@[^/?#]+|channel/[^/?#]+|c/[^/?#]+|user/[^/?#]+))", u, re.I)
+    if m:
+        return m.group(1), True
+    try:
+        with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "skip_download": True}) as ydl:
+            info = ydl.extract_info(u, download=False) or {}
+        for k in ("channel_url", "uploader_url"):
+            v = info.get(k) or ""
+            if "youtube.com" in v:
+                return v.rstrip("/"), True
+        chid = info.get("channel_id")
+        if chid:
+            return f"https://www.youtube.com/channel/{chid}", True
+    except Exception:
+        pass
+    return u, False
+
+def fetch_latest_entries(profile_url: str, scope: str = "both"):
+    """Return list of {id, title, url} for latest (max 10). Scope: both/videos/shorts."""
     plat = detect_platform(profile_url)
     if plat == "instagram":
         return ig_fetch(profile_url, 10)  # yt-dlp insta broken -> gallery-dl
     if plat == "twitter":
         return tw_fetch(profile_url, 10)  # is yt-dlp me x.com support nahi -> gallery-dl
+    if scope not in ("both", "videos", "shorts"):
+        scope = "both"
+    if plat == "youtube":
+        base, is_ch = _yt_base(profile_url)
+        if is_ch:
+            tabs = {"both": ["videos", "shorts"], "videos": ["videos"], "shorts": ["shorts"]}[scope]
+            entries, seen = [], set()
+            for tab in tabs:
+                try:
+                    with yt_dlp.YoutubeDL(_ydl_opts_flat()) as ydl:
+                        tinfo = ydl.extract_info(f"{base}/{tab}", download=False)
+                    for e in ((tinfo or {}).get("entries") or []):
+                        if not e or not e.get("id"):
+                            continue
+                        vid = e["id"]
+                        if vid.startswith("UC") or vid.startswith("PL") or vid in seen:
+                            continue
+                        seen.add(vid)
+                        entries.append({
+                            "id": vid,
+                            "title": e.get("title", vid),
+                            "url": e.get("url") or e.get("webpage_url") or f"https://www.youtube.com/watch?v={vid}",
+                        })
+                        if len(entries) >= 10:
+                            break
+                except Exception:
+                    continue
+                if len(entries) >= 10:
+                    break
+            return entries[:10]
     profile_url = normalize_profile_url(profile_url)
     with yt_dlp.YoutubeDL(_ydl_opts_flat()) as ydl:
         info = ydl.extract_info(profile_url, download=False)
@@ -368,7 +431,7 @@ def first_run(profile: dict, progress=None):
     if progress:
         progress({"stage": "listing", "done": 0, "total": 1, "pct": None, "title": "latest dhoond rahe hain..."})
     try:
-        entries = fetch_latest_entries(profile["url"])
+        entries = fetch_latest_entries(profile["url"], profile.get("scope", "both") or "both")
     except Exception as e:
         msg = _friendly_error(profile, f"Fetch failed: {e}")
         set_profile_error(pid, msg)
@@ -418,7 +481,7 @@ def check_profile(profile: dict, progress=None):
     if progress:
         progress({"stage": "listing", "done": 0, "total": 1, "pct": None, "title": "check ho raha hai..."})
     try:
-        entries = fetch_latest_entries(profile["url"])
+        entries = fetch_latest_entries(profile["url"], profile.get("scope", "both") or "both")
     except Exception as e:
         msg = _friendly_error(profile, f"Fetch failed: {e}")
         set_profile_error(pid, msg)

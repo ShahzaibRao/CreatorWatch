@@ -25,7 +25,8 @@ def init_db():
         status TEXT DEFAULT 'active',
         interval_minutes INTEGER DEFAULT 15,
         last_error TEXT DEFAULT '',
-        quality TEXT DEFAULT '720p'
+        quality TEXT DEFAULT '720p',
+        scope TEXT DEFAULT 'both'
     )
     """)
     # migration for old DBs
@@ -33,6 +34,7 @@ def init_db():
         ("interval_minutes", "ALTER TABLE profiles ADD COLUMN interval_minutes INTEGER DEFAULT 15"),
         ("last_error", "ALTER TABLE profiles ADD COLUMN last_error TEXT DEFAULT ''"),
         ("quality", "ALTER TABLE profiles ADD COLUMN quality TEXT DEFAULT '720p'"),
+        ("scope", "ALTER TABLE profiles ADD COLUMN scope TEXT DEFAULT 'both'"),
         ("seen", "ALTER TABLE videos ADD COLUMN seen INTEGER DEFAULT 1"),
     ]:
         try:
@@ -101,13 +103,15 @@ def disk_free_gb(path):
     except Exception:
         return None, None
 
-def add_profile(name, platform, url, folder, interval_minutes=15, quality="720p"):
+def add_profile(name, platform, url, folder, interval_minutes=15, quality="720p", scope="both"):
     conn = get_conn()
     cur = conn.cursor()
+    if scope not in ("both", "videos", "shorts"):
+        scope = "both"
     try:
         cur.execute(
-            "INSERT INTO profiles (name, platform, url, folder, created_at, interval_minutes, quality) VALUES (?,?,?,?,?,?,?)",
-            (name, platform, url, folder, datetime.now().isoformat(), int(interval_minutes or 15), quality or "720p")
+            "INSERT INTO profiles (name, platform, url, folder, created_at, interval_minutes, quality, scope) VALUES (?,?,?,?,?,?,?,?)",
+            (name, platform, url, folder, datetime.now().isoformat(), int(interval_minutes or 15), quality or "720p", scope)
         )
         conn.commit()
         pid = cur.lastrowid
@@ -116,19 +120,19 @@ def add_profile(name, platform, url, folder, interval_minutes=15, quality="720p"
     conn.close()
     return pid
 
-def update_profile(pid, name, url, interval_minutes, quality, folder=None):
-    """Edit: name/url/interval/quality (+optional folder) update."""
+def update_profile(pid, name, url, interval_minutes, quality, folder=None, scope=None):
+    """Edit: name/url/interval/quality (+optional folder/scope) update."""
     conn = get_conn()
+    sets = ["name=?", "url=?", "interval_minutes=?", "quality=?", "platform=?"]
+    vals = [name, url, int(interval_minutes or 15), quality or "720p", _platform(url)]
     if folder:
-        conn.execute(
-            "UPDATE profiles SET name=?, url=?, interval_minutes=?, quality=?, platform=?, folder=? WHERE id=?",
-            (name, url, int(interval_minutes or 15), quality or "720p", _platform(url), folder, pid)
-        )
-    else:
-        conn.execute(
-            "UPDATE profiles SET name=?, url=?, interval_minutes=?, quality=?, platform=? WHERE id=?",
-            (name, url, int(interval_minutes or 15), quality or "720p", _platform(url), pid)
-        )
+        sets.append("folder=?")
+        vals.append(folder)
+    if scope in ("both", "videos", "shorts"):
+        sets.append("scope=?")
+        vals.append(scope)
+    vals.append(pid)
+    conn.execute(f"UPDATE profiles SET {', '.join(sets)} WHERE id=?", vals)
     conn.commit()
     conn.close()
 

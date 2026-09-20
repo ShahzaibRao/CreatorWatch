@@ -41,6 +41,12 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 <option value="360p" {% if p.quality=='360p' %}selected{% endif %}>360p</option>
 <option value="best" {% if p.quality=='best' %}selected{% endif %}>Best</option>
 </select>
+<label>Scope (YouTube: videos+shorts / sirf videos / sirf shorts)</label>
+<select name="scope">
+<option value="both" {% if (p.scope or 'both')=='both' %}selected{% endif %}>Both</option>
+<option value="videos" {% if p.scope=='videos' %}selected{% endif %}>Videos only</option>
+<option value="shorts" {% if p.scope=='shorts' %}selected{% endif %}>Shorts only</option>
+</select>
 <button type="submit">{{ t('e_save') }}</button>
 </form></div>
 </div>

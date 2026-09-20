@@ -295,6 +295,8 @@ def add():
     if not name or not url:
         return redirect(url_for("dashboard"))
     platform = detect_platform(url)
+    from downloader import detect_scope
+    scope = detect_scope(url)
     folder_in = request.form.get("folder", "").strip()
     if folder_in:
         from downloader import resolve_folder
@@ -304,7 +306,7 @@ def add():
         folder = folder_ok
     else:
         folder = prospect_folder(name, platform)
-    pid = db.add_profile(name, platform, url, folder, interval, quality)
+    pid = db.add_profile(name, platform, url, folder, interval, quality, scope)
     if pid:
         # first-time latest download pool worker me (user ko wait nahi karna)
         submit(pid, first=True)
@@ -334,7 +336,8 @@ def edit(pid):
             if not folder_ok:
                 return render_template("edit.html", p=p, msg=f"Folder ghalat hai: {err}")
             folder = folder_ok
-        db.update_profile(pid, name, url, interval, quality, folder)
+        scope = request.form.get("scope", "").strip() or None
+        db.update_profile(pid, name, url, interval, quality, folder, scope)
         return redirect(url_for("dashboard"))
     return render_template("edit.html", p=p)
 

@@ -212,7 +212,7 @@ tr:last-child td{border-bottom:0}
     {% if profiles %}
     <div class="twrap">
     <table>
-      <tr><th>{{ t('c_prospect') }}</th><th>{{ t('c_platform') }}</th><th>{{ t('c_every') }}</th><th>{{ t('c_quality') }}</th><th>{{ t('c_videos') }}</th><th>{{ t('c_status') }}</th><th></th></tr>
+      <tr><th>{{ t('c_prospect') }}</th><th>{{ t('c_platform') }}</th><th>{{ t('c_every') }}</th><th>{{ t('c_quality') }}</th><th>Scope</th><th>{{ t('c_videos') }}</th><th>{{ t('c_status') }}</th><th></th></tr>
       {% for p in profiles %}
       <tr>
         <td><span class="pname">{{ p.name }}</span> {% if p.id in unseen_pids %}<span class="pill new">{{ t('new') }}</span>{% endif %}<br><span class="pfolder">{{ p.folder }}</span><br><span style="font-size:11.5px;color:var(--muted)">{{ p.last_check or t('first_dl') }}</span>
@@ -221,6 +221,7 @@ tr:last-child td{border-bottom:0}
         <td><span class="badge {% if p.platform=='youtube' %}yt{% elif p.platform=='tiktok' %}tk{% elif p.platform=='instagram' %}ig{% elif p.platform=='twitter' %}tw{% endif %}">{{ p.platform }}</span></td>
         <td>{{ p.interval_minutes or 15 }}m</td>
         <td>{{ p.quality or '720p' }}</td>
+        <td><span class="badge">{{ p.scope or 'both' }}</span></td>
         <td><b>{% for m in metrics.per_profile %}{% if m.id==p.id %}{{ m.video_count }}{% endif %}{% endfor %}</b></td>
         <td>{% if p.status=='paused' %}<span class="pill wait">{{ t('st_paused') }}</span>{% elif p.last_error %}<span class="pill err" title="{{ p.last_error }}">{{ t('st_error') }}</span>{% elif p.last_check %}<span class="pill ok">{{ t('st_ok') }}</span>{% else %}<span class="pill wait">{{ t('st_working') }}</span>{% endif %}</td>
         <td><div class="act">

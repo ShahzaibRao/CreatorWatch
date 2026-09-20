@@ -92,6 +92,7 @@ Server: `http://127.0.0.1:5000` (Flask dev server, local use ke liye).
 26. ✅ Default root ~/Downloads/CreatorWatch (is PC par exact match), live speed verified 2.1 MB/s via progress chain, rebuilt + installer recompiled
 27. ✅ Logs viewer: /logs page (400 lines, all/errors filter, auto-refresh 5s, download .log, clear) + /api/logs + footer link
 28. ✅ CI: har main push par auto-build (artifacts 14 din), tag par Release; abhi wala push runner par build ho raha hai (~10-15 min, Actions tab me dekho)
+29. ✅ v0.2.1 tag pushed → runner Release bana raha hai (EXE + Setup assets, ~10-15 min)
 
 ---
 
