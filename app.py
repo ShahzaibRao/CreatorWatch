@@ -182,6 +182,11 @@ def live_cookie_test(platform, url):
     opts = {"quiet": True, "no_warnings": True, "extract_flat": True,
             "playlistend": 3, "skip_download": True, "cookiefile": COOKIES_PATH}
     try:
+        from downloader import _js_runtimes
+        opts["js_runtimes"] = _js_runtimes()
+    except Exception:
+        pass
+    try:
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=False)
         if not info:

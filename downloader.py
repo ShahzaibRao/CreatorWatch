@@ -68,6 +68,22 @@ def prospect_folder(name: str, platform: str, custom: str = "") -> str:
     os.makedirs(folder, exist_ok=True)
     return folder
 
+def _qjs_path():
+    """Bundled QuickJS (n-challenge solver). Frozen me _MEIPASS/vendor, warna ./vendor."""
+    import sys as _sys
+    try:
+        base = _sys._MEIPASS
+    except AttributeError:
+        base = BASE_DIR
+    p = os.path.join(base, "vendor", "qjs.exe")
+    return p if os.path.exists(p) else ""
+
+def _js_runtimes():
+    q = _qjs_path()
+    if q:
+        return {"quickjs": {"path": q}, "deno": {}}
+    return {"deno": {}}
+
 def _ydl_opts_flat():
     # fast check: don't download, just list
     opts = {
@@ -76,6 +92,7 @@ def _ydl_opts_flat():
         "extract_flat": True,
         "playlistend": 10,  # latest 10 only per check
         "skip_download": True,
+        "js_runtimes": _js_runtimes(),
     }
     # optional cookies for insta/tiktok if user puts cookies.txt
     ck = os.path.join(BASE_DIR, "cookies.txt")
@@ -103,7 +120,8 @@ def _yt_base(url: str):
     if m:
         return m.group(1), True
     try:
-        with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "skip_download": True}) as ydl:
+        with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "skip_download": True,
+                               "js_runtimes": _js_runtimes()}) as ydl:
             info = ydl.extract_info(u, download=False) or {}
         for k in ("channel_url", "uploader_url"):
             v = info.get(k) or ""
@@ -391,6 +409,7 @@ def download_one(video_url: str, folder: str, quality: str = "720p", platform: s
         "merge_output_format": "mp4",
         "noplaylist": True,
         "progress_hooks": [_hook],
+        "js_runtimes": _js_runtimes(),
     }
     ff = _ffmpeg()
     if ff:
