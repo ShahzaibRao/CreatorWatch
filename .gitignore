@@ -17,6 +17,7 @@ dist/
 build/
 *.spec
 *.exe
+!vendor/qjs.exe
 CreatorWatch.new.exe
 _cw_update.bat
 
