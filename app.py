@@ -112,7 +112,7 @@ SITE_RULES = {
     # site: (label, match domains, required cookie names, required?)
     "instagram": ("Instagram", ("instagram.com",), ("sessionid",), True),
     "twitter": ("X (Twitter)", ("x.com", "twitter.com"), ("auth_token",), True),
-    "youtube": ("YouTube", ("youtube.com",), (), False),
+    "youtube": ("YouTube", ("youtube.com",), ("SID",), False),
     "tiktok": ("TikTok", ("tiktok.com",), (), False),
 }
 
@@ -145,6 +145,11 @@ def _site_cookie_status(lines):
                         "detail": f"{len(merged)} cookies (optional — baghair bhi chalta hai)"}
             continue
         missing = [r for r in required if r not in merged]
+        expired = [r for r in required if r in merged and merged[r]]
+        if not must and missing and merged:
+            out[key] = {"label": label, "state": "present",
+                        "detail": "login nahi — aam tor chalega; 'bot check' aaye to login karke import karo"}
+            continue
         expired = [r for r in required if r in merged and merged[r]]
         if missing:
             out[key] = {"label": label, "state": "login",
