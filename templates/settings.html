@@ -43,6 +43,15 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 </form>
 </div>
 <div class="card">
+<h2 style="font-size:15px;margin:0 0 4px">🌐 YouTube proxy (IP block ho to)</h2>
+<p class="tip">IP wall aaye to mobile hotspot/VPN lagao <b>ya</b> yahan proxy do (e.g. http://127.0.0.1:8080). Khali = direct.</p>
+<form method="post">
+<label>Proxy URL</label>
+<input name="yt_proxy" value="{{ yt_proxy }}" placeholder="http://host:port">
+<button type="submit">💾 Save Proxy</button>
+</form>
+</div>
+<div class="card">
 <form method="post">
 <label>{{ t('s_workers') }} (1–10)</label>
 <input name="max_workers" type="number" value="{{ n }}" min="1" max="10" required>

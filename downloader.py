@@ -78,11 +78,158 @@ def _qjs_path():
     p = os.path.join(base, "vendor", "qjs.exe")
     return p if os.path.exists(p) else ""
 
-def _js_runtimes():
+POT_PORT = 4416
+POT_URL = f"http://127.0.0.1:{POT_PORT}"
+
+def _deno_exe():
+    for c in (os.path.join(BASE_DIR, "tools", "deno", "deno.exe"),
+              os.path.join(BASE_DIR, "tools", "deno-full", "deno.exe")):
+        if os.path.exists(c):
+            return c
+    return ""
+
+def _pot_dir():
+    for c in (os.path.join(BASE_DIR, "tools", "potserver"),
+              os.path.join(BASE_DIR, "bgutil-server")):
+        if os.path.isdir(os.path.join(c, "src")):
+            return c
+    return ""
+
+def _js_runtimes(prefer_deno=False):
+    runtimes = {}
+    d = _deno_exe()
+    if d:
+        runtimes["deno"] = {"path": d}
     q = _qjs_path()
     if q:
-        return {"quickjs": {"path": q}, "deno": {}}
-    return {"deno": {}}
+        runtimes["quickjs"] = {"path": q}
+    if not runtimes:
+        runtimes = {"deno": {}}
+    if prefer_deno and "deno" in runtimes:
+        runtimes = {"deno": runtimes["deno"], **{k: v for k, v in runtimes.items() if k != "deno"}}
+    return runtimes
+
+def _yt_proxy():
+    try:
+        from database import get_setting
+        return (get_setting("yt_proxy", "") or "").strip()
+    except Exception:
+        return ""
+
+def _yt_opts(pot=False):
+    """YouTube opts: cookies + JS runtime + (pot: PO token + EJS solver) + proxy."""
+    o = {"js_runtimes": _js_runtimes(prefer_deno=pot)}
+    ck = os.path.join(BASE_DIR, "cookies.txt")
+    if os.path.exists(ck):
+        o["cookiefile"] = ck
+    px = _yt_proxy()
+    if px:
+        o["proxy"] = px
+    if pot:
+        o["remote_components"] = {"ejs:github"}
+        o["extractor_args"] = {"youtube": {"po_token": ["web.player+bgutil:http"]}}
+    return o
+
+def pot_running():
+    import urllib.request
+    try:
+        with urllib.request.urlopen(POT_URL + "/ping", timeout=5) as r:
+            return r.status == 200
+    except Exception:
+        return False
+
+def start_pot_server():
+    """bgutil POT server (deno) background me — ek hi instance."""
+    import subprocess
+    import sys as _sys
+    import urllib.request
+    if pot_running():
+        return True
+    d = _deno_exe()
+    pdir = _pot_dir()
+    main = os.path.join(pdir, "src", "main.ts") if pdir else ""
+    if not d or not main or not os.path.exists(main):
+        return False
+    try:
+        kw = dict(cwd=pdir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if os.name == "nt":
+            kw["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        subprocess.Popen([d, "run", "--allow-all", "src/main.ts", "--port", str(POT_PORT)], **kw)
+        for _ in range(30):
+            try:
+                with urllib.request.urlopen(POT_URL + "/ping", timeout=2) as r:
+                    if r.status == 200:
+                        return True
+            except Exception:
+                pass
+            import time as _t
+            _t.sleep(1)
+    except Exception:
+        pass
+    return pot_running()
+
+WALL_HINTS = ("Sign in to confirm", "not a bot", "needs to be reloaded")
+
+def is_wall_error(err):
+    s = str(err)
+    return any(h in s for h in WALL_HINTS)
+
+DENO_URL = "https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-pc-windows-msvc.zip"
+POT_RAW = "https://raw.githubusercontent.com/Brainicism/bgutil-ytdlp-pot-provider/master/server"
+POT_FILES = ["src/generate_once.ts", "src/main.ts", "src/session_manager.ts",
+             "src/utils.ts", "scripts/check_lockfiles.ts", "deno.json", "package.json"]
+
+def yt_stack_status():
+    """Deno + POT server source mojood? Returns dict."""
+    d = _deno_exe()
+    pdir = _pot_dir()
+    return {"deno": bool(d), "potserver": bool(pdir),
+            "server_running": pot_running() if (d and pdir) else False}
+
+def ensure_yt_stack(progress=None):
+    """Deno (~40MB ek bar) + POT server source download -> tools/. Returns (ok, report)."""
+    import urllib.request
+    import zipfile
+    import io as _io
+    notes = []
+    dd = os.path.join(BASE_DIR, "tools", "deno")
+    dexe = os.path.join(dd, "deno.exe")
+    if not os.path.exists(dexe):
+        if progress:
+            progress({"title": "Deno download (40MB)..."})
+        try:
+            req = urllib.request.Request(DENO_URL, headers={"User-Agent": "CreatorWatch"})
+            with urllib.request.urlopen(req, timeout=900) as r:
+                blob = r.read()
+            os.makedirs(dd, exist_ok=True)
+            with zipfile.ZipFile(_io.BytesIO(blob)) as z:
+                z.extractall(dd)
+            notes.append("deno ok")
+        except Exception as e:
+            return False, f"deno download fail: {e}"
+    else:
+        notes.append("deno pehle se")
+    pdir = os.path.join(BASE_DIR, "tools", "potserver")
+    missing = [f for f in POT_FILES if not os.path.exists(os.path.join(pdir, f))]
+    if missing:
+        if progress:
+            progress({"title": "POT server files..."})
+        try:
+            for f in missing:
+                url = f"{POT_RAW}/{f}"
+                req = urllib.request.Request(url, headers={"User-Agent": "CreatorWatch"})
+                dest = os.path.join(pdir, f)
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
+                with urllib.request.urlopen(req, timeout=120) as r, open(dest, "wb") as fh:
+                    fh.write(r.read())
+            notes.append("potserver files ok")
+        except Exception as e:
+            return False, f"potserver download fail: {e}"
+    else:
+        notes.append("potserver pehle se")
+    ok = start_pot_server()
+    notes.append("server running" if ok else "server start FAIL (deno issue?)")
+    return ok, "; ".join(notes)
 
 def _ydl_opts_flat():
     # fast check: don't download, just list
@@ -92,12 +239,8 @@ def _ydl_opts_flat():
         "extract_flat": True,
         "playlistend": 10,  # latest 10 only per check
         "skip_download": True,
-        "js_runtimes": _js_runtimes(),
     }
-    # optional cookies for insta/tiktok if user puts cookies.txt
-    ck = os.path.join(BASE_DIR, "cookies.txt")
-    if os.path.exists(ck):
-        opts["cookiefile"] = ck
+    opts.update(_yt_opts())
     return opts
 
 def detect_scope(url: str) -> str:
@@ -120,8 +263,7 @@ def _yt_base(url: str):
     if m:
         return m.group(1), True
     try:
-        with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "skip_download": True,
-                               "js_runtimes": _js_runtimes()}) as ydl:
+        with yt_dlp.YoutubeDL({**{"quiet": True, "no_warnings": True, "skip_download": True}, **_yt_opts()}) as ydl:
             info = ydl.extract_info(u, download=False) or {}
         for k in ("channel_url", "uploader_url"):
             v = info.get(k) or ""
@@ -382,8 +524,8 @@ QUALITY_FORMATS = {
     "360p": "bv*[height<=360]+ba/b[height<=360]",
 }
 
-def download_one(video_url: str, folder: str, quality: str = "720p", platform: str = "youtube", progress=None):
-    """Download single video, return (filepath, title)."""
+def download_one(video_url: str, folder: str, quality: str = "720p", platform: str = "youtube", progress=None, method: str = "auto"):
+    """Download single video, return (filepath, title). YouTube: auto = direct, wall par PO-token retry."""
     if platform in ("instagram", "twitter"):
         return ig_download(video_url, folder, progress)
     if platform == "tiktok":
@@ -409,25 +551,37 @@ def download_one(video_url: str, folder: str, quality: str = "720p", platform: s
         "merge_output_format": "mp4",
         "noplaylist": True,
         "progress_hooks": [_hook],
-        "js_runtimes": _js_runtimes(),
     }
+    opts.update(_yt_opts())
     ff = _ffmpeg()
     if ff:
         opts["ffmpeg_location"] = ff
-    ck = os.path.join(BASE_DIR, "cookies.txt")
-    if os.path.exists(ck):
-        opts["cookiefile"] = ck
-    with yt_dlp.YoutubeDL(opts) as ydl:
+    use_pot = (platform == "youtube" and method in ("auto", "po"))
+    if use_pot and method == "po":
+        if not start_pot_server():
+            raise Exception("PO-token server start nahi hua — Updates > Setup YouTube se install karo")
+        opts.update(_yt_opts(pot=True))
+    try:
+        ydl = yt_dlp.YoutubeDL(opts)
         info = ydl.extract_info(video_url, download=True)
-        fp = ydl.prepare_filename(info)
-        # mp4 merge may change ext
-        if not os.path.exists(fp):
-            base = os.path.splitext(fp)[0]
-            for ext in (".mp4", ".mkv", ".webm"):
-                if os.path.exists(base + ext):
-                    fp = base + ext
-                    break
-        return fp, info.get("title", info.get("id"))
+    except Exception as e:
+        if platform == "youtube" and method == "auto" and is_wall_error(e):
+            if not start_pot_server():
+                raise Exception(str(e)[:250] + " [YouTube wall: Updates > Setup YouTube se PO-token install karo, ya IP badlo (hotspot/VPN)]")
+            opts.update(_yt_opts(pot=True))
+            ydl = yt_dlp.YoutubeDL(opts)
+            info = ydl.extract_info(video_url, download=True)
+        else:
+            raise
+    fp = ydl.prepare_filename(info)
+    # mp4 merge may change ext
+    if not os.path.exists(fp):
+        base = os.path.splitext(fp)[0]
+        for ext in (".mp4", ".mkv", ".webm"):
+            if os.path.exists(base + ext):
+                fp = base + ext
+                break
+    return fp, info.get("title", info.get("id"))
 
 LOGIN_HINT = " (Login/cookies required: /cookies page par cookies import karo)"
 
@@ -460,6 +614,7 @@ def first_run(profile: dict, progress=None):
         return 0, ["Koi video nahi mili"]
     quality = profile.get("quality", "720p") or "720p"
     platform = profile.get("platform", "youtube") or "youtube"
+    method = profile.get("method", "auto") or "auto"
     new_count, errors = 0, []
     latest = entries[0]  # sab se recent upload
     if not video_exists(pid, latest["id"]):
@@ -467,7 +622,8 @@ def first_run(profile: dict, progress=None):
             if progress:
                 progress({"stage": "downloading", "done": 0, "total": 1, "pct": 0, "title": latest["title"][:60]})
             fp, title = download_one(latest["url"], folder, quality, platform,
-                                     progress=(lambda u: progress({**{"stage": "downloading", "done": 0, "total": 1}, **u})) if progress else None)
+                                     progress=(lambda u: progress({**{"stage": "downloading", "done": 0, "total": 1}, **u})) if progress else None,
+                                     method=method)
             if fp == folder:
                 mark_seen(pid, latest["id"], title or latest["title"])
             else:
@@ -515,6 +671,7 @@ def check_profile(profile: dict, progress=None):
     errors = []
     quality = profile.get("quality", "720p") or "720p"
     platform = profile.get("platform", "youtube") or "youtube"
+    method = profile.get("method", "auto") or "auto"
     total = max(len(fresh), 1)
     for i, e in enumerate(fresh):
         vid = e["id"]
@@ -526,7 +683,8 @@ def check_profile(profile: dict, progress=None):
             if progress:
                 progress({**base, "pct": 0, "title": e["title"][:60]})
             fp, title = download_one(e["url"], folder, quality, platform,
-                                     progress=(lambda u, b=base: progress({**b, **u})) if progress else None)
+                                     progress=(lambda u, b=base: progress({**b, **u})) if progress else None,
+                                     method=method)
             if fp == folder:
                 # text-only post (koi media nahi) — skip mark taake retry loop na ho
                 from database import mark_seen

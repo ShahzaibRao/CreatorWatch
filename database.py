@@ -26,7 +26,8 @@ def init_db():
         interval_minutes INTEGER DEFAULT 15,
         last_error TEXT DEFAULT '',
         quality TEXT DEFAULT '720p',
-        scope TEXT DEFAULT 'both'
+        scope TEXT DEFAULT 'both',
+        method TEXT DEFAULT 'auto'
     )
     """)
     # migration for old DBs
@@ -35,6 +36,7 @@ def init_db():
         ("last_error", "ALTER TABLE profiles ADD COLUMN last_error TEXT DEFAULT ''"),
         ("quality", "ALTER TABLE profiles ADD COLUMN quality TEXT DEFAULT '720p'"),
         ("scope", "ALTER TABLE profiles ADD COLUMN scope TEXT DEFAULT 'both'"),
+        ("method", "ALTER TABLE profiles ADD COLUMN method TEXT DEFAULT 'auto'"),
         ("seen", "ALTER TABLE videos ADD COLUMN seen INTEGER DEFAULT 1"),
     ]:
         try:
@@ -103,15 +105,17 @@ def disk_free_gb(path):
     except Exception:
         return None, None
 
-def add_profile(name, platform, url, folder, interval_minutes=15, quality="720p", scope="both"):
+def add_profile(name, platform, url, folder, interval_minutes=15, quality="720p", scope="both", method="auto"):
     conn = get_conn()
     cur = conn.cursor()
     if scope not in ("both", "videos", "shorts"):
         scope = "both"
+    if method not in ("auto", "direct", "po"):
+        method = "auto"
     try:
         cur.execute(
-            "INSERT INTO profiles (name, platform, url, folder, created_at, interval_minutes, quality, scope) VALUES (?,?,?,?,?,?,?,?)",
-            (name, platform, url, folder, datetime.now().isoformat(), int(interval_minutes or 15), quality or "720p", scope)
+            "INSERT INTO profiles (name, platform, url, folder, created_at, interval_minutes, quality, scope, method) VALUES (?,?,?,?,?,?,?,?,?)",
+            (name, platform, url, folder, datetime.now().isoformat(), int(interval_minutes or 15), quality or "720p", scope, method)
         )
         conn.commit()
         pid = cur.lastrowid
@@ -120,8 +124,8 @@ def add_profile(name, platform, url, folder, interval_minutes=15, quality="720p"
     conn.close()
     return pid
 
-def update_profile(pid, name, url, interval_minutes, quality, folder=None, scope=None):
-    """Edit: name/url/interval/quality (+optional folder/scope) update."""
+def update_profile(pid, name, url, interval_minutes, quality, folder=None, scope=None, method=None):
+    """Edit: name/url/interval/quality (+optional folder/scope/method) update."""
     conn = get_conn()
     sets = ["name=?", "url=?", "interval_minutes=?", "quality=?", "platform=?"]
     vals = [name, url, int(interval_minutes or 15), quality or "720p", _platform(url)]
@@ -131,6 +135,9 @@ def update_profile(pid, name, url, interval_minutes, quality, folder=None, scope
     if scope in ("both", "videos", "shorts"):
         sets.append("scope=?")
         vals.append(scope)
+    if method in ("auto", "direct", "po"):
+        sets.append("method=?")
+        vals.append(method)
     vals.append(pid)
     conn.execute(f"UPDATE profiles SET {', '.join(sets)} WHERE id=?", vals)
     conn.commit()
@@ -239,6 +246,18 @@ def unseen_profiles():
     rows = conn.execute("SELECT DISTINCT profile_id FROM videos WHERE status='done' AND seen=0").fetchall()
     conn.close()
     return {r["profile_id"] for r in rows}
+
+def youtube_blocked():
+    """Kaun se YouTube profiles wall-error me hain (IP suggestion banner ke liye)."""
+    conn = get_conn()
+    rows = conn.execute("SELECT id, name, last_error FROM profiles WHERE platform='youtube' AND status='active'").fetchall()
+    conn.close()
+    out = []
+    for r in rows:
+        err = r["last_error"] or ""
+        if any(h in err for h in ("not a bot", "needs to be reloaded", "PO-token")):
+            out.append(dict(r))
+    return out
 
 def video_exists(profile_id, video_id):
     conn = get_conn()

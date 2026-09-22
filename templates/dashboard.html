@@ -158,6 +158,9 @@ tr:last-child td{border-bottom:0}
     </div>
   </div>
 
+  {% if blocked %}
+  <p class="notice" style="border-color:rgba(240,82,79,.5)"><b>⚠️ YouTube wall:</b> {{ blocked|length }} profile{% if blocked|length>1 %}s{% endif %} ({{ blocked[0].name }}{% if blocked|length>1 %} +{{ blocked|length-1 }}{% endif %}) me IP/bot block hai — videos pending hain, skip nahi huin. Hal: <b>mobile hotspot ya VPN se IP badlo</b>, ya <a href="/updates"><b>Updates > Setup YouTube</b></a> se PO-token install karo, ya profile Edit me Method badlo.</p>
+  {% endif %}
   {% if msg %}<p class="notice" style="{% if msg_ok %}border-color:rgba(18,185,129,.5){% else %}border-color:rgba(240,82,79,.5){% endif %}">{{ msg }}</p>{% endif %}
   {% if not cookies_ok %}
   <p class="notice"><b>Note:</b> {{ t('cookies_note') }} <a href="/cookies"><b>{{ t('cookies_here') }}</b></a>. {{ t('yt_note') }}</p>
@@ -199,6 +202,13 @@ tr:last-child td{border-bottom:0}
               <option value="480p">480p</option>
               <option value="360p">360p</option>
               <option value="best">Best</option>
+            </select>
+          </div>
+          <div><label>YT Method</label>
+            <select name="method">
+              <option value="auto" selected>Auto</option>
+              <option value="direct">Direct</option>
+              <option value="po">PO-Token</option>
             </select>
           </div>
           <div style="display:flex;align-items:flex-end"><button class="btn" type="submit">{{ t('add_btn') }}</button></div>

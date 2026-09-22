@@ -94,6 +94,7 @@ Server: `http://127.0.0.1:5000` (Flask dev server, local use ke liye).
 28. ✅ CI: har main push par auto-build (artifacts 14 din), tag par Release; abhi wala push runner par build ho raha hai (~10-15 min, Actions tab me dekho)
 29. ✅ v0.2.1 tag pushed → runner Release bana raha hai (EXE + Setup assets, ~10-15 min)
 30. ✅ Scope monitoring: detect_scope (channel link=both, shorts link=shorts, video link=videos), _yt_base channel resolve, tab-exact fetch (shorts/videos zero overlap verified), scope column + badge + Edit override
+31. ✅ YouTube resilience: vendor/qjs.exe bundled (n-challenge JS runtime wired into all yt-dlp calls); current YT network/account PO-token wall documented — pending videos auto-retry, not skipped
 
 ---
 

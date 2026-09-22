@@ -58,6 +58,14 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 {% if has_update and not frozen %}<p><small>Source mode me ho — <b>git pull</b> karke update lo, phir server restart karo.</small></p>{% endif %}
 </div></div>
 
+<div class="card"><div class="card-h"><h2>YouTube PO-stack (bot-wall fix)</h2></div><div class="card-b">
+<p><small>YouTube IP/bot block kare to PO-token se download hota hai. Ek bar install karo (~45MB), phir auto-use.</small></p>
+<div class="kv"><span>Deno</span><b>{% if ytstack.deno %}✅{% else %}❌{% endif %}</b></div>
+<div class="kv"><span>Server files</span><b>{% if ytstack.potserver %}✅{% else %}❌{% endif %}</b></div>
+<div class="kv"><span>Server running</span><b>{% if ytstack.server_running %}✅{% else %}—{% endif %}</b></div>
+<div class="row"><form method="post"><input type="hidden" name="action" value="ytsetup"><button class="btn" type="submit">⬇ Setup YouTube</button></form></div>
+</div></div>
+
 <div class="card"><div class="card-h"><h2>Download engines</h2></div><div class="card-b">
 <p><small>yt-dlp / gallery-dl purane hon to sites fail hoti hain — inhe alag se update rakho taake app smoothly chalti rahe.</small></p>
 <div class="kv"><span>yt-dlp</span><b>{{ engines.get('yt-dlp','?') }}{% if external.get('yt-dlp') %} <span class="pill ok">ext {{ external.get('yt-dlp') }}</span>{% endif %}</b></div>

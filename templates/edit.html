@@ -47,6 +47,12 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 <option value="videos" {% if p.scope=='videos' %}selected{% endif %}>Videos only</option>
 <option value="shorts" {% if p.scope=='shorts' %}selected{% endif %}>Shorts only</option>
 </select>
+<label>YT Method (Auto = direct, wall par PO-token retry)</label>
+<select name="method">
+<option value="auto" {% if (p.method or 'auto')=='auto' %}selected{% endif %}>Auto</option>
+<option value="direct" {% if p.method=='direct' %}selected{% endif %}>Direct only</option>
+<option value="po" {% if p.method=='po' %}selected{% endif %}>PO-Token only</option>
+</select>
 <button type="submit">{{ t('e_save') }}</button>
 </form></div>
 </div>

@@ -287,7 +287,7 @@ def dashboard():
     cookies_ok = os.path.exists(os.path.join(os.path.dirname(__file__), "cookies.txt"))
     return render_template("dashboard.html", profiles=profiles, metrics=metrics,
                            recent=recent, cookies_ok=cookies_ok, version=VERSION,
-                           unseen=unseen, unseen_pids=unseen_pids,
+                           unseen=unseen, unseen_pids=unseen_pids, blocked=db.youtube_blocked(),
                            msg=request.args.get("msg", ""), msg_ok=request.args.get("ok", "") == "1")
 
 @app.route("/add", methods=["POST"])
@@ -307,6 +307,9 @@ def add():
     platform = detect_platform(url)
     from downloader import detect_scope
     scope = detect_scope(url)
+    method = request.form.get("method", "auto").strip() or "auto"
+    if method not in ("auto", "direct", "po"):
+        method = "auto"
     folder_in = request.form.get("folder", "").strip()
     if folder_in:
         from downloader import resolve_folder
@@ -316,7 +319,7 @@ def add():
         folder = folder_ok
     else:
         folder = prospect_folder(name, platform)
-    pid = db.add_profile(name, platform, url, folder, interval, quality, scope)
+    pid = db.add_profile(name, platform, url, folder, interval, quality, scope, method)
     if pid:
         # first-time latest download pool worker me (user ko wait nahi karna)
         submit(pid, first=True)
@@ -347,7 +350,8 @@ def edit(pid):
                 return render_template("edit.html", p=p, msg=f"Folder ghalat hai: {err}")
             folder = folder_ok
         scope = request.form.get("scope", "").strip() or None
-        db.update_profile(pid, name, url, interval, quality, folder, scope)
+        method = request.form.get("method", "").strip() or None
+        db.update_profile(pid, name, url, interval, quality, folder, scope, method)
         return redirect(url_for("dashboard"))
     return render_template("edit.html", p=p)
 
@@ -396,7 +400,11 @@ def settings():
     import os as _os
     msg = ""
     if request.method == "POST":
-        if "downloads_root" in request.form:
+        if "yt_proxy" in request.form:
+            px = request.form.get("yt_proxy", "").strip()
+            db.set_setting("yt_proxy", px)
+            msg = f"Proxy set: {px}" if px else "Proxy hataya gaya (direct)"
+        elif "downloads_root" in request.form:
             root = request.form.get("downloads_root", "").strip().strip('"')
             if root:
                 from downloader import resolve_folder
@@ -419,9 +427,10 @@ def settings():
             msg = f"Save ho gaya: {n} parallel workers"
     root = db.get_downloads_root()
     free_gb, total_gb = db.disk_free_gb(root)
+    yt_proxy = db.get_setting("yt_proxy", "") or ""
     return render_template("settings.html", n=max_workers(), msg=msg,
                            suggestion=None, cores=_os.cpu_count() or 4,
-                           root=root, free_gb=free_gb, total_gb=total_gb)
+                           root=root, free_gb=free_gb, total_gb=total_gb, yt_proxy=yt_proxy)
 
 def suggest_workers(cores, ram_gb, speed_mbps):
     """Bottleneck = sab se choti value. 1 core system ke liye chhoro."""
@@ -454,8 +463,9 @@ def settings_calc():
     s.update({"cores": cores, "ram": ram, "speed": speed})
     root = db.get_downloads_root()
     free_gb, total_gb = db.disk_free_gb(root)
-    return render_template("settings.html", n=max_workers(), msg="", suggestion=s, cores=cores,
-                           root=root, free_gb=free_gb, total_gb=total_gb)
+    yt_proxy = db.get_setting("yt_proxy", "") or ""
+    return render_template("settings.html", n=max_workers(), msg=msg, suggestion=s, cores=cores,
+                           root=root, free_gb=free_gb, total_gb=total_gb, yt_proxy=yt_proxy)
 
 @app.route("/settings/apply", methods=["POST"])
 def settings_apply():
@@ -467,9 +477,10 @@ def settings_apply():
     import os as _os2
     root = db.get_downloads_root()
     free_gb, total_gb = db.disk_free_gb(root)
+    yt_proxy = db.get_setting("yt_proxy", "") or ""
     return render_template("settings.html", n=n, msg=f"Apply ho gaya: {n} parallel workers",
                            suggestion=None, cores=_os2.cpu_count() or 4,
-                           root=root, free_gb=free_gb, total_gb=total_gb)
+                           root=root, free_gb=free_gb, total_gb=total_gb, yt_proxy=yt_proxy)
 
 @app.route("/api/notifications")
 def api_notifications():
@@ -610,6 +621,12 @@ def updates_page():
         else:
             msg, msg_ok = _upgrade_engines()
         rel = latest_release()
+    if action == "ytsetup":
+        from downloader import ensure_yt_stack
+        ok, detail = ensure_yt_stack()
+        msg = ("YouTube PO-stack ready: " if ok else "YouTube setup fail: ") + detail
+        msg_ok = ok
+        rel = latest_release()
     if action == "restart_app" and is_frozen():
         _restart_app()
         return "<h2>App restart ho rahi hai — window dobara khulegi.</h2>"
@@ -634,9 +651,14 @@ def updates_page():
         ext = engines.external_versions()
     except Exception:
         pass
+    try:
+        from downloader import yt_stack_status
+        ytstack = yt_stack_status()
+    except Exception:
+        ytstack = {}
     return render_template("updates.html", version=VERSION, latest=latest or "—",
                            has_update=has_update, notes=(rel.get("body", "") or "")[:1500] if isinstance(rel, dict) else "",
-                           engines=engine_versions(), frozen=is_frozen(), external=ext,
+                           engines=engine_versions(), frozen=is_frozen(), external=ext, ytstack=ytstack,
                            pending=pending, msg=msg, msg_ok=msg_ok,
                            rel_error=(rel.get("error", "") if isinstance(rel, dict) else ""))
 
@@ -710,6 +732,14 @@ def start_scheduler():
     # har 1 min me due profiles pool me submit (max limit, busy skip)
     sched.add_job(submit_due, "interval", minutes=1, id="auto_check")
     sched.start()
+    # POT server pehle se installed ho to khud start (YouTube wall ke liye)
+    try:
+        from downloader import yt_stack_status, start_pot_server
+        st = yt_stack_status()
+        if st.get("deno") and st.get("potserver") and not st.get("server_running"):
+            threading.Thread(target=start_pot_server, daemon=True).start()
+    except Exception:
+        pass
     return sched
 
 if __name__ == "__main__":
