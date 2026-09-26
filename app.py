@@ -20,7 +20,7 @@ import database as db
 from translations import LANGS, text as _text
 from downloader import detect_platform, prospect_folder, check_profile, check_all_profiles, check_due_profiles, first_run
 
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 REPO = "ShahzaibRao/CreatorWatch"
 
 app = Flask(__name__)
