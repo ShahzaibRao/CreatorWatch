@@ -76,8 +76,11 @@ def prospect_folder(name: str, platform: str, custom: str = "") -> str:
     return folder
 
 def _qjs_path():
-    """Bundled QuickJS (n-challenge solver). Frozen me _MEIPASS/vendor, warna ./vendor."""
+    """QuickJS (n-challenge solver). Windows: bundled vendor; Linux: system qjs."""
     import sys as _sys
+    if _sys.platform != "win32":
+        import shutil
+        return shutil.which("qjs") or ""
     try:
         base = _sys._MEIPASS
     except AttributeError:
@@ -89,8 +92,10 @@ POT_PORT = 4416
 POT_URL = f"http://127.0.0.1:{POT_PORT}"
 
 def _deno_exe():
-    for c in (os.path.join(BASE_DIR, "tools", "deno", "deno.exe"),
-              os.path.join(BASE_DIR, "tools", "deno-full", "deno.exe")):
+    import sys as _sys
+    exe = "deno.exe" if _sys.platform == "win32" else "deno"
+    for c in (os.path.join(BASE_DIR, "tools", "deno", exe),
+              os.path.join(BASE_DIR, "tools", "deno-full", exe)):
         if os.path.exists(c):
             return c
     return ""
@@ -408,9 +413,10 @@ def _env_with_ffmpeg():
     try:
         ff = _ffmpeg()
         if ff and os.path.exists(ff):
+            import sys as _sys
             tools = os.path.join(BASE_DIR, "tools")
             os.makedirs(tools, exist_ok=True)
-            dest = os.path.join(tools, "ffmpeg.exe")
+            dest = os.path.join(tools, "ffmpeg.exe" if _sys.platform == "win32" else "ffmpeg")
             if not os.path.exists(dest):
                 shutil.copyfile(ff, dest)
             env["PATH"] = tools + os.pathsep + env.get("PATH", "")

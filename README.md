@@ -11,6 +11,7 @@ then only **new uploads** are downloaded on every interval.
 ## Install options (2 ways)
 1. **Source:** clone this repo → follow Setup below → web mode at http://127.0.0.1:5000 (`pip install -r requirements.txt` installs everything).
 2. **EXE (easy):** download `CreatorWatch.exe` from [Releases](https://github.com/ShahzaibRao/CreatorWatch/releases) → double-click → the same interface opens in your browser automatically. No Python needed. Updates come from inside the app (⬆ Updates page).
+3. **Linux:** `installer/install.sh [path]` (default `~/.local/share/creatorwatch`) → `creatorwatch` command + app menu entry. Needs python3-venv; for desktop window also webkit (`python3-gi gir1.2-webkit2-4.1`), else browser mode.
 
 ## 1. Setup (first time)
 

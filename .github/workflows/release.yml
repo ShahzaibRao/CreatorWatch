@@ -61,8 +61,41 @@ jobs:
         if: "!startsWith(github.ref, 'refs/tags/')"
         uses: actions/upload-artifact@v4
         with:
-          name: CreatorWatch-dev-${{ github.sha }}
+          name: CreatorWatch-dev-win-${{ github.sha }}
           retention-days: 14
           path: |
             dist/CreatorWatch.exe
             installer/CreatorWatch-Setup-*.exe
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Build Linux bundle (PyInstaller onedir)
+        run: pyinstaller --noconfirm --onedir --noconsole --name CreatorWatch --add-data "templates:templates" --collect-all webview --exclude-module yt_dlp --exclude-module gallery_dl --exclude-module imageio_ffmpeg --exclude-module yt_dlp_plugins --exclude-module PIL app.py
+
+      - name: Pack tarball
+        run: tar -czf CreatorWatch-linux.tar.gz -C dist CreatorWatch
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: CreatorWatch-linux.tar.gz
+          generate_release_notes: true
+
+      - name: Upload dev build (artifacts)
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        uses: actions/upload-artifact@v4
+        with:
+          name: CreatorWatch-dev-linux-${{ github.sha }}
+          retention-days: 14
+          path: CreatorWatch-linux.tar.gz

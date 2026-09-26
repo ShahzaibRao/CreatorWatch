@@ -19,6 +19,7 @@ SolidCompression=yes
 PrivilegesRequired=lowest
 WizardStyle=modern
 DisableProgramGroupPage=yes
+DisableDirPage=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

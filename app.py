@@ -700,19 +700,28 @@ def _download_update(rel):
         return False, f"Download fail: {e}"
 
 def _restart_app():
-    """EXE restart: batch 5s wait karke dobara launch (port free hone tak)."""
+    """App restart: Windows = batch wait+launch; Linux = relaunch binary/script."""
     import subprocess
     import sys as _sys
     try:
-        exe = os.path.abspath(_sys.executable)
-        bat = os.path.join(app_dir(), "_cw_restart.bat")
-        with open(bat, "w") as f:
-            f.write("@echo off\ntimeout /t 6 /nobreak >nul\n"
-                    f'start "" "{exe}"\n'
-                    'del "%~f0"\n')
-        subprocess.Popen(["cmd", "/c", bat], cwd=app_dir(),
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                         stdin=subprocess.DEVNULL, close_fds=True)
+        if os.name == "nt":
+            exe = os.path.abspath(_sys.executable)
+            bat = os.path.join(app_dir(), "_cw_restart.bat")
+            with open(bat, "w") as f:
+                f.write("@echo off\ntimeout /t 6 /nobreak >nul\n"
+                        f'start "" "{exe}"\n'
+                        'del "%~f0"\n')
+            subprocess.Popen(["cmd", "/c", bat], cwd=app_dir(),
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             stdin=subprocess.DEVNULL, close_fds=True)
+        else:
+            exe = os.path.abspath(_sys.executable)
+            subprocess.Popen([exe] + [a for a in _sys.argv[1:] if a != "--app"] + ["--app"],
+                             cwd=app_dir(), stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
+                             close_fds=True, start_new_session=True)
+            import time as _t
+            _t.sleep(6)
     except Exception as e:
         print(f"[RESTART FAIL] {e}", flush=True)
         return

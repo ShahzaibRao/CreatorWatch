@@ -11,6 +11,7 @@ uske baad har interval par **sirf nayi uploads** download hoti hain.
 ## Install ke 2 tariqe
 1. **Source:** repo clone karo → neeche Setup follow karo → web mode http://127.0.0.1:5000 par (`pip install -r requirements.txt` se sab install).
 2. **EXE (easy):** [Releases](https://github.com/ShahzaibRao/CreatorWatch/releases) se `CreatorWatch.exe` download karo → double-click → wahi interface browser me khud khul jayega. Python ki zaroorat nahi. Updates app ke andar se (⬆ Updates page).
+3. **Linux:** `installer/install.sh [path]` (default `~/.local/share/creatorwatch`) → `creatorwatch` command + app menu. python3-venv chahiye; desktop window ke liye webkit, warna browser mode.
 
 ## 1. Setup (pehli bar)
 
