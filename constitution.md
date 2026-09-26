@@ -96,6 +96,7 @@ Server: `http://127.0.0.1:5000` (Flask dev server, local use ke liye).
 30. ✅ Scope monitoring: detect_scope (channel link=both, shorts link=shorts, video link=videos), _yt_base channel resolve, tab-exact fetch (shorts/videos zero overlap verified), scope column + badge + Edit override
 31. ✅ YouTube resilience: vendor/qjs.exe bundled (n-challenge JS runtime wired into all yt-dlp calls); current YT network/account PO-token wall documented — pending videos auto-retry, not skipped
 32. ✅ YouTube multi-method PROOF (mp4 downloaded!): PO-token stack (bgutil server + deno + EJS remote + cookies) wired as auto/direct/po per-profile methods, on-demand Setup downloader, proxy setting, wall banner with IP-change guidance; note: heavy testing hot-flagged this IP — cooldown needed
+33. ✅ v0.3.0 tag pushed → runner Release bana raha hai (~10-15 min)
 
 ---
 

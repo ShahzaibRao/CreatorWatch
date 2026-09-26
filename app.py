@@ -281,7 +281,7 @@ def finish_job(pid, result):
 def dashboard():
     profiles = db.get_profiles()
     metrics = db.get_metrics()
-    recent = db.get_recent_videos(20)
+    recent = db.get_recent_videos(10)
     unseen = db.get_unseen(20)
     unseen_pids = db.unseen_profiles()
     cookies_ok = os.path.exists(os.path.join(os.path.dirname(__file__), "cookies.txt"))
