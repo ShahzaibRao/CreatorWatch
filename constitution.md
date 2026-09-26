@@ -99,6 +99,7 @@ Server: `http://127.0.0.1:5000` (Flask dev server, local use ke liye).
 33. ✅ v0.3.0 tag pushed → runner Release bana raha hai (~10-15 min)
 34. ✅ v0.3.1: recent-10, purane setups delete, fresh local build+installer (install-tested v0.3.1), tag pushed → runner Release
 35. ✅ Onedir build (crash fix): onefile temp-extract mid-run TemplateNotFound + restart-death → onedir real files; restart button verified working; installer 19MB + folder packaging, install-tested
+36. ✅ Linux + install-path: installer path page explicit (DisableDirPage=no), installer/install.sh (+uninstall.sh, .desktop, exec bits, LF attributes), cross-platform qjs/deno/ffmpeg/restart, CI linux tarball job, default save root user-settable via Settings
 
 ---
 

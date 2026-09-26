@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CreatorWatch — Auto-track YouTube, TikTok, Instagram & X</title>
+<meta name="description" content="CreatorWatch auto-tracks your favourite creators and downloads only new uploads. Windows + Linux. Free.">
+<style>
+:root{--bg:#0b0f14;--surface:#12181f;--surface2:#0e141b;--border:#212b36;--text:#e8edf2;--muted:#93a0b0;--accent:#12b981;--accent-d:#0a8f64;--warn:#f5a524;--danger:#f0524f;--info:#3b9eff;--shadow:0 8px 28px rgba(0,0,0,.35);--r:14px}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+a{color:var(--info);text-decoration:none}
+.wrap{max-width:1060px;margin:0 auto;padding:22px 18px 60px}
+.nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0 26px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#0e2a22,#12b981);display:flex;align-items:center;justify-content:center}
+.logo svg{width:22px;height:22px;stroke:#fff}
+.brand b{font-size:19px}
+.btn{display:inline-block;border:0;border-radius:10px;padding:12px 22px;font-weight:700;font-size:15px;cursor:pointer;background:var(--accent);color:#04281c;text-decoration:none}
+.btn:hover{background:var(--accent-d);color:#fff}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
+.hero{text-align:center;padding:26px 0 34px}
+.hero h1{font-size:clamp(28px,5vw,46px);margin:0 0 12px;letter-spacing:-.5px}
+.hero h1 span{color:var(--accent)}
+.hero p{color:var(--muted);font-size:16px;max-width:640px;margin:0 auto 24px;line-height:1.6}
+.hero .row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.badges{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+.badge{font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:16px}
+.card-h{padding:15px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-h h2{margin:0;font-size:15px}
+.card-h span{font-size:12.5px;color:var(--muted)}
+.card-b{padding:16px 18px}
+.mock{background:var(--surface2);border:1px dashed var(--border);border-radius:10px;padding:14px 16px;font-size:13px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 0 14px}
+.stat{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px}
+.stat small{color:var(--muted);font-size:12px;display:block;margin-bottom:4px}
+.stat b{font-size:22px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);text-align:left;padding:9px 10px;border-bottom:1px solid var(--border)}
+td{padding:10px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:0}
+.pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.pill.ok{background:rgba(18,185,129,.15);color:var(--accent)}
+.pill.new{background:rgba(59,158,255,.15);color:var(--info)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.feat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px}
+.feat h3{margin:0 0 8px;font-size:15px}
+.feat p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.6}
+.feat .ic{font-size:22px}
+.steps{counter-reset:s;display:flex;flex-direction:column;gap:10px}
+.step{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:14px}
+.step b{color:var(--accent)}
+code{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 7px;font-size:12.5px}
+.foot{text-align:center;color:var(--muted);font-size:12.5px;margin-top:26px}
+h2.sec{font-size:22px;margin:34px 0 14px}
+@media(max-width:800px){.stats{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="nav">
+  <div class="brand"><div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg></div><b>CreatorWatch</b></div>
+  <div><a class="btn ghost" href="https://github.com/ShahzaibRao/CreatorWatch">GitHub</a>
+  <a class="btn" href="https://github.com/ShahzaibRao/CreatorWatch/releases/latest">⬇ Download</a></div>
+</div>
+
+<div class="hero">
+  <h1>Never miss an upload. <span>Ever again.</span></h1>
+  <p>Add a YouTube, TikTok, Instagram or X link once. CreatorWatch checks every few minutes and downloads <b>only new uploads</b> — into neat <code>platform/creator</code> folders. Windows + Linux. 4 languages. Free.</p>
+  <div class="row">
+    <a class="btn" href="https://github.com/ShahzaibRao/CreatorWatch/releases/latest">⬇ Download for Windows</a>
+    <a class="btn ghost" href="https://github.com/ShahzaibRao/CreatorWatch#readme">📖 How it works</a>
+  </div>
+  <div class="badges"><span class="badge">v0.4.0</span><span class="badge">Windows Setup + Portable</span><span class="badge">Linux tarball</span><span class="badge">EN · اردو · ES · 中文</span><span class="badge">Dark / Light</span></div>
+</div>
+
+<h2 class="sec">👀 Live look (sample data)</h2>
+<div class="card"><div class="card-h"><h2>Dashboard</h2><span>this is how the app looks</span></div>
+<div class="card-b">
+<div class="stats">
+  <div class="stat"><small>Prospects</small><b>12</b></div>
+  <div class="stat"><small>Videos</small><b>148</b></div>
+  <div class="stat"><small>Storage</small><b>2.4 GB</b></div>
+  <div class="stat"><small>Auto-check</small><b style="font-size:14px">Every minute</b></div>
+</div>
+<div class="mock">
+<table>
+<tr><th>Prospect</th><th>Platform</th><th>Every</th><th>Videos</th><th>Status</th></tr>
+<tr><td><b>ali_tiktok</b> <span class="pill new">NEW</span></td><td>tiktok</td><td>15m</td><td><b>34</b></td><td><span class="pill ok">OK</span></td></tr>
+<tr><td><b>tech_daily</b></td><td>youtube</td><td>30m</td><td><b>51</b></td><td><span class="pill ok">OK</span></td></tr>
+<tr><td><b>desi_reels</b></td><td>instagram</td><td>15m</td><td><b>22</b></td><td><span class="pill ok">OK</span></td></tr>
+<tr><td><b>news_x</b></td><td>twitter</td><td>60m</td><td><b>41</b></td><td><span class="pill ok">OK</span></td></tr>
+</table>
+</div>
+<p style="color:var(--muted);font-size:13px">⬇ Downloading: <b>tech_daily</b> 3/5 · 720p · <b>1.4 MB/s</b> ━━━━━━ 62%</p>
+</div></div>
+
+<h2 class="sec">✨ Features (raw list)</h2>
+<div class="grid">
+<div class="feat"><div class="ic">🎯</div><h3>New uploads only</h3><p>First add grabs the latest video; old ones are marked seen forever. Every check downloads just fresh uploads — even if you delete files.</p></div>
+<div class="feat"><div class="ic">🎬</div><h3>Videos + Shorts scopes</h3><p>Channel link monitors both; a shorts link watches shorts only; a video link watches videos only.</p></div>
+<div class="feat"><div class="ic">🛡️</div><h3>YouTube bot-wall bypass</h3><p>Auto / Direct / PO-Token methods, bundled JS solver, cookies + proxy support with IP-change guidance.</p></div>
+<div class="feat"><div class="ic">⚙️</div><h3>Thread pool 1–10</h3><p>Parallel profiles with live progress bars, plus an auto calculator (CPU/RAM/net bottleneck).</p></div>
+<div class="feat"><div class="ic">🍪</div><h3>Cookies manager</h3><p>Paste browser cookies per site, per-site status (Ready/Login missing/Expired), live validity test.</p></div>
+<div class="feat"><div class="ic">🔔</div><h3>Notifications + logs</h3><p>Bell with unread count, NEW pills, in-app log viewer with error filter, download & clear.</p></div>
+<div class="feat"><div class="ic">📁</div><h3>Your folders</h3><p>Global root + per-profile folder, native folder picker, free-space display, <code>platform/creator</code> layout.</p></div>
+<div class="feat"><div class="ic">🌐</div><h3>4 languages + themes</h3><p>English, Roman Urdu, Español, 中文 with one-click toggle; dark/light mode, mobile responsive.</p></div>
+<div class="feat"><div class="ic">⬆️</div><h3>Self-updating</h3><p>App + yt-dlp/gallery-dl engines update from inside the app; releases built automatically.</p></div>
+</div>
+
+<h2 class="sec">🚀 Get it in 2 minutes</h2>
+<div class="card"><div class="card-b"><div class="steps">
+<div class="step"><b>1.</b> <a href="https://github.com/ShahzaibRao/CreatorWatch/releases/latest">Download</a> the Setup (Windows) or tarball (Linux).</div>
+<div class="step"><b>2.</b> Install & launch — paste a channel link, pick a folder, done. First video downloads instantly.</div>
+<div class="step"><b>3.</b> For Instagram/X: import login cookies on the 🍪 page. For YouTube walls: Updates → Setup YouTube.</div>
+</div></div></div>
+
+<div class="foot">CreatorWatch v0.4.0 · Free & open source · <a href="https://github.com/ShahzaibRao/CreatorWatch">GitHub</a></div>
+</div></body></html>
