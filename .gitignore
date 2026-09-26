@@ -20,6 +20,7 @@ build/
 !vendor/qjs.exe
 CreatorWatch.new.exe
 _cw_update.bat
+_cw_restart.bat
 
 # Test/debug junk
 dash.html

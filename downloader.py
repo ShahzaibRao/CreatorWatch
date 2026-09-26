@@ -2,8 +2,15 @@ import os
 import re
 from paths import app_dir, ensure_pylibs
 ensure_pylibs()
-import yt_dlp
 from database import video_exists, add_video, update_last_check
+
+def _yt_dlp():
+    """Lazy import taake EXE lightweight rahe — engines Updates page se install hote hain."""
+    try:
+        import yt_dlp as _y
+        return _y
+    except ImportError:
+        raise Exception("yt-dlp installed nahi — Updates page par 'Install Required Packages' dabao")
 
 BASE_DIR = app_dir()
 DOWNLOADS_ROOT = os.path.join(BASE_DIR, "downloads")
@@ -263,7 +270,7 @@ def _yt_base(url: str):
     if m:
         return m.group(1), True
     try:
-        with yt_dlp.YoutubeDL({**{"quiet": True, "no_warnings": True, "skip_download": True}, **_yt_opts()}) as ydl:
+        with _yt_dlp().YoutubeDL({**{"quiet": True, "no_warnings": True, "skip_download": True}, **_yt_opts()}) as ydl:
             info = ydl.extract_info(u, download=False) or {}
         for k in ("channel_url", "uploader_url"):
             v = info.get(k) or ""
@@ -292,7 +299,7 @@ def fetch_latest_entries(profile_url: str, scope: str = "both"):
             entries, seen = [], set()
             for tab in tabs:
                 try:
-                    with yt_dlp.YoutubeDL(_ydl_opts_flat()) as ydl:
+                    with _yt_dlp().YoutubeDL(_ydl_opts_flat()) as ydl:
                         tinfo = ydl.extract_info(f"{base}/{tab}", download=False)
                     for e in ((tinfo or {}).get("entries") or []):
                         if not e or not e.get("id"):
@@ -314,7 +321,7 @@ def fetch_latest_entries(profile_url: str, scope: str = "both"):
                     break
             return entries[:10]
     profile_url = normalize_profile_url(profile_url)
-    with yt_dlp.YoutubeDL(_ydl_opts_flat()) as ydl:
+    with _yt_dlp().YoutubeDL(_ydl_opts_flat()) as ydl:
         info = ydl.extract_info(profile_url, download=False)
     entries = []
     if not info:
@@ -352,7 +359,7 @@ def fetch_latest_entries(profile_url: str, scope: str = "both"):
             if not tab_url:
                 continue
             try:
-                with yt_dlp.YoutubeDL(_ydl_opts_flat()) as ydl2:
+                with _yt_dlp().YoutubeDL(_ydl_opts_flat()) as ydl2:
                     tinfo = ydl2.extract_info(tab_url, download=False)
                 for e in (tinfo.get("entries") or []):
                     if not e or not e.get("id"):
@@ -562,14 +569,14 @@ def download_one(video_url: str, folder: str, quality: str = "720p", platform: s
             raise Exception("PO-token server start nahi hua — Updates > Setup YouTube se install karo")
         opts.update(_yt_opts(pot=True))
     try:
-        ydl = yt_dlp.YoutubeDL(opts)
+        ydl = _yt_dlp().YoutubeDL(opts)
         info = ydl.extract_info(video_url, download=True)
     except Exception as e:
         if platform == "youtube" and method == "auto" and is_wall_error(e):
             if not start_pot_server():
                 raise Exception(str(e)[:250] + " [YouTube wall: Updates > Setup YouTube se PO-token install karo, ya IP badlo (hotspot/VPN)]")
             opts.update(_yt_opts(pot=True))
-            ydl = yt_dlp.YoutubeDL(opts)
+            ydl = _yt_dlp().YoutubeDL(opts)
             info = ydl.extract_info(video_url, download=True)
         else:
             raise

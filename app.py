@@ -15,7 +15,6 @@ if is_frozen():
     except Exception:
         pass
 ensure_pylibs()  # exe: updated engines (tools/pylibs) bundled se pehle load hon
-import yt_dlp
 import database as db
 from translations import LANGS, text as _text
 from downloader import detect_platform, prospect_folder, check_profile, check_all_profiles, check_due_profiles, first_run
@@ -182,12 +181,13 @@ def live_cookie_test(platform, url):
     opts = {"quiet": True, "no_warnings": True, "extract_flat": True,
             "playlistend": 3, "skip_download": True, "cookiefile": COOKIES_PATH}
     try:
-        from downloader import _js_runtimes
+        from downloader import _js_runtimes, _yt_dlp
         opts["js_runtimes"] = _js_runtimes()
-    except Exception:
-        pass
+        _YDL = _yt_dlp()
+    except Exception as e:
+        return False, str(e)[:250]
     try:
-        with yt_dlp.YoutubeDL(opts) as ydl:
+        with _YDL.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=False)
         if not info:
             return False, "kuch nahi mila — cookies expire ho sakti hain"
@@ -700,18 +700,23 @@ def _download_update(rel):
         return False, f"Download fail: {e}"
 
 def _restart_app():
-    """EXE restart (engines update ke baad naye load hon)."""
+    """EXE restart: batch 5s wait karke dobara launch (port free hone tak)."""
     import subprocess
     import sys as _sys
     try:
-        subprocess.Popen([_sys.executable], cwd=app_dir(),
-                         creationflags=getattr(subprocess, "DETACHED_PROCESS", 0),
+        exe = os.path.abspath(_sys.executable)
+        bat = os.path.join(app_dir(), "_cw_restart.bat")
+        with open(bat, "w") as f:
+            f.write("@echo off\ntimeout /t 6 /nobreak >nul\n"
+                    f'start "" "{exe}"\n'
+                    'del "%~f0"\n')
+        subprocess.Popen(["cmd", "/c", bat], cwd=app_dir(),
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                          stdin=subprocess.DEVNULL, close_fds=True)
     except Exception as e:
         print(f"[RESTART FAIL] {e}", flush=True)
         return
-    threading.Timer(2.0, lambda: os._exit(0)).start()
+    threading.Timer(1.0, lambda: os._exit(0)).start()
 
 def _apply_update_restart():
     """Old exe ko .new se replace karke restart (batch detached)."""
