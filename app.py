@@ -46,7 +46,7 @@ def _license_gate():
     # M2: license gate (cloud branch only). Bina valid key ke sab kuch
     # /activate par redirect — sirf activation, language aur static khule hain.
     p = request.path
-    if p == "/activate" or p == "/deactivate" or p.startswith("/lang/") or p.startswith("/static/"):
+    if p == "/activate" or p == "/deactivate" or p == "/app-icon.png" or p.startswith("/lang/") or p.startswith("/static/"):
         return None
     ok, _reason = lic.is_activated(db)
     if not ok:
@@ -425,6 +425,15 @@ def api_update_start():
 def api_update_status():
     with UPD_LOCK:
         return jsonify(dict(UPD))
+
+@app.get("/app-icon.png")
+def app_icon():
+    """App icon (brand logo + favicon) — frozen aur source dono me."""
+    from flask import send_file
+    p = _asset_path("icon.png")
+    if os.path.exists(p):
+        return send_file(p, mimetype="image/png", max_age=86400)
+    return "", 404
 
 @app.get("/api/pot_status")
 def api_pot_status():
