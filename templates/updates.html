@@ -69,6 +69,7 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 <div class="kv"><span>Deno</span><b>{% if ytstack.deno %}✅{% else %}❌{% endif %}</b></div>
 <div class="kv"><span>Server files</span><b>{% if ytstack.potserver %}✅{% else %}❌{% endif %}</b></div>
 <div class="kv"><span>Server running</span><b id="potCell">{% if ytstack.server_running %}✅{% else %}—{% endif %}</b></div>
+<pre id="potLog" style="display:none;margin-top:10px" title="POT server log (aakhri lines)"></pre>
 <div class="row"><form method="post" onsubmit="return startUpdate('ytsetup', this)"><input type="hidden" name="action" value="ytsetup"><button class="btn" type="submit" id="ytsetupBtn">⬇ Setup YouTube</button></form>
 <button class="btn ghost" id="potStartBtn" {% if ytstack.server_running %}style="display:none"{% endif %} onclick="startPot()">▶ Start Server</button></div>
 </div></div>
@@ -129,19 +130,42 @@ function startUpdate(action, form){
   return false;
 }
 
-// POT server live status: har 4s me refresh, band ho to Start button
+// POT server live status: har 4s me refresh, band ho to Start button + log excerpt
 function potTick(){
   fetch('/api/pot_status').then(function(r){return r.json();}).then(function(s){
-    var cell=document.getElementById('potCell'), btn=document.getElementById('potStartBtn');
+    var cell=document.getElementById('potCell'), btn=document.getElementById('potStartBtn'),
+        log=document.getElementById('potLog');
     if(!cell) return;
     cell.textContent=s.server_running?'✅':'—';
     if(btn) btn.style.display=s.server_running?'none':'';
+    if(log){
+      if(!s.server_running && s.log_tail && s.log_tail.length){
+        log.style.display='block';
+        log.textContent=s.log_tail.join('\n');
+      } else if(!s.server_running && !s.log_exists){
+        log.style.display='block';
+        log.textContent='(server.log abhi bani nahi — Start Server dabao, phir yahan deno ka output aayega)';
+      } else {
+        log.style.display='none';
+      }
+    }
   }).catch(function(){});
 }
 function startPot(){
   var btn=document.getElementById('potStartBtn');
   if(btn){btn.disabled=true;btn.textContent='⏳ Starting…';}
-  fetch('/api/pot_start',{method:'POST'}).then(function(){setTimeout(potTick,3000);});
+  fetch('/api/pot_start',{method:'POST'}).then(function(){
+    var n=0;
+    var iv=setInterval(function(){
+      n++;
+      fetch('/api/pot_status').then(function(r){return r.json();}).then(function(s){
+        if(s.server_running||n>=9){
+          clearInterval(iv);potTick();
+          if(btn){btn.disabled=false;btn.textContent='▶ Start Server';}
+        }
+      });
+    },4000);
+  });
 }
 setInterval(potTick,4000);
 </script>

@@ -39,16 +39,20 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 
 {% if msg %}<div class="msg {% if msg_ok %}ok{% else %}err{% endif %}">{{ msg }}</div>{% endif %}
 
-<div class="card"><div class="card-h"><h2>server.log (latest 400)</h2>
+<div class="card"><div class="card-h"><h2>{% if logfile=='pot' %}pot-server.log{% else %}server.log{% endif %} (latest 400)</h2>
 <div class="row">
+<select class="mini" id="fileSel">
+<option value="app" {% if logfile=='app' %}selected{% endif %}>App log</option>
+<option value="pot" {% if logfile=='pot' %}selected{% endif %}>POT server log</option>
+</select>
 <select class="mini" id="levelSel">
 <option value="all" {% if level=='all' %}selected{% endif %}>Sab kuch</option>
 <option value="errors" {% if level=='errors' %}selected{% endif %}>Sirf errors</option>
 </select>
 <button class="btn ghost" id="refreshBtn">🔄 Refresh</button>
 <label style="font-size:12px;color:var(--muted)"><input type="checkbox" id="autoChk" checked> auto (5s)</label>
-<a class="btn ghost" style="padding:9px 14px" href="/logs/download">⬇ Download</a>
-<form method="post" action="/logs/clear" onsubmit="return confirm('Log clear karni hai?')" style="margin:0"><button class="btn danger" type="submit">🗑 Clear</button></form>
+<a class="btn ghost" style="padding:9px 14px" href="/logs/download?f={{ logfile }}">⬇ Download</a>
+<form method="post" action="/logs/clear?f={{ logfile }}" onsubmit="return confirm('Log clear karni hai?')" style="margin:0"><button class="btn danger" type="submit">🗑 Clear</button></form>
 </div></div>
 <div class="card-b"><pre id="logbox">{% for l in lines %}<span class="{% if 'ERROR' in l or 'FAIL' in l or 'Traceback' in l %}errline{% endif %}">{{ l }}</span>
 {% endfor %}</pre></div></div>
@@ -57,10 +61,10 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 (function(){var r=document.documentElement,b=document.getElementById('themeBtn');function a(t){r.setAttribute('data-theme',t);try{localStorage.setItem('pd-theme',t)}catch(e){}}var s=null;try{s=localStorage.getItem('pd-theme')}catch(e){}if(!s){s=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'}a(s);b.onclick=function(){a(r.getAttribute('data-theme')==='light'?'dark':'light')}})();
 (function(){
   var box=document.getElementById('logbox'), sel=document.getElementById('levelSel'),
-      auto=document.getElementById('autoChk');
+      fsel=document.getElementById('fileSel'), auto=document.getElementById('autoChk');
   function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function load(){
-    fetch('/api/logs?level='+sel.value+'&n=400').then(function(r){return r.json()}).then(function(d){
+    fetch('/api/logs?level='+sel.value+'&n=400&f='+fsel.value).then(function(r){return r.json()}).then(function(d){
       box.innerHTML=d.lines.map(function(l){
         var hot=(l.indexOf('ERROR')>=0||l.indexOf('FAIL')>=0||l.indexOf('Traceback')>=0)?' class="errline"':'';
         return '<span'+hot+'>'+esc(l)+'</span>';
@@ -69,7 +73,8 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
     }).catch(function(){});
   }
   document.getElementById('refreshBtn').onclick=load;
-  sel.onchange=function(){ window.location.href='/logs?level='+sel.value; };
+  sel.onchange=function(){ window.location.href='/logs?level='+sel.value+'&f='+fsel.value; };
+  fsel.onchange=function(){ window.location.href='/logs?f='+fsel.value+'&level='+sel.value; };
   setInterval(function(){ if(auto.checked) load(); },5000);
   box.scrollTop=box.scrollHeight;
 })();

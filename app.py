@@ -361,8 +361,22 @@ def api_update_status():
 @app.get("/api/pot_status")
 def api_pot_status():
     try:
-        from downloader import yt_stack_status
-        return jsonify(yt_stack_status())
+        from downloader import yt_stack_status, _pot_dir
+        st = yt_stack_status()
+        pdir = _pot_dir()
+        logp = os.path.join(pdir, "server.log") if pdir else ""
+        tail = []
+        if logp and os.path.exists(logp):
+            try:
+                with open(logp, encoding="utf-8", errors="replace") as fh:
+                    tail = fh.read().splitlines()[-12:]
+            except Exception:
+                pass
+        st["log_exists"] = bool(logp and os.path.exists(logp))
+        st["log_tail"] = tail
+        st["log_path"] = logp
+        st["main_ts"] = bool(pdir and os.path.exists(os.path.join(pdir, "src", "main.ts")))
+        return jsonify(st)
     except Exception as e:
         return jsonify({"deno": False, "potserver": False, "server_running": False,
                         "error": str(e)[:150]})
@@ -664,9 +678,24 @@ def api_metrics():
 
 LOG_PATH = os.path.join(app_dir(), "server.log")
 
-def read_log_tail(n=400, level="all"):
+def pot_log_path():
+    """Deno POT server ka log — "" agar pot dir nahi."""
     try:
-        with open(LOG_PATH, encoding="utf-8", errors="replace") as f:
+        from downloader import _pot_dir
+        pdir = _pot_dir()
+        return os.path.join(pdir, "server.log") if pdir else ""
+    except Exception:
+        return ""
+
+def _log_path(which):
+    if which == "pot":
+        return pot_log_path() or LOG_PATH
+    return LOG_PATH
+
+def read_log_tail(n=400, level="all", path=None):
+    p = path or LOG_PATH
+    try:
+        with open(p, encoding="utf-8", errors="replace") as f:
             lines = f.read().splitlines()
     except Exception as e:
         return [f"(log nahi mil rahi: {e})"]
@@ -679,8 +708,13 @@ def logs_page():
     level = request.args.get("level", "all")
     if level not in ("all", "errors"):
         level = "all"
-    return render_template("logs.html", lines=read_log_tail(400, level), level=level,
-                           logsize=(os.path.getsize(LOG_PATH) if os.path.exists(LOG_PATH) else 0),
+    which = request.args.get("f", "app")
+    if which not in ("app", "pot"):
+        which = "app"
+    lp = _log_path(which)
+    return render_template("logs.html", lines=read_log_tail(400, level, lp), level=level,
+                           logfile=which,
+                           logsize=(os.path.getsize(lp) if os.path.exists(lp) else 0),
                            msg=request.args.get("msg", ""), msg_ok=request.args.get("ok", "") == "1")
 
 @app.route("/api/logs")
@@ -688,30 +722,39 @@ def api_logs():
     level = request.args.get("level", "all")
     if level not in ("all", "errors"):
         level = "all"
+    which = request.args.get("f", "app")
+    if which not in ("app", "pot"):
+        which = "app"
     try:
         n = max(50, min(int(request.args.get("n", "200")), 2000))
     except ValueError:
         n = 200
-    return jsonify({"lines": read_log_tail(n, level)})
+    return jsonify({"lines": read_log_tail(n, level, _log_path(which))})
 
 @app.route("/logs/download")
 def logs_download():
     from flask import Response
+    which = request.args.get("f", "app")
+    if which not in ("app", "pot"):
+        which = "app"
     try:
-        with open(LOG_PATH, encoding="utf-8", errors="replace") as f:
+        with open(_log_path(which), encoding="utf-8", errors="replace") as f:
             data = f.read()
     except Exception as e:
         data = f"(log nahi mil rahi: {e})"
     return Response(data, mimetype="text/plain",
-                    headers={"Content-Disposition": "attachment; filename=creatorwatch.log"})
+                    headers={"Content-Disposition": f"attachment; filename=creatorwatch-{which}.log"})
 
 @app.route("/logs/clear", methods=["POST"])
 def logs_clear():
+    which = request.args.get("f", "app")
+    if which not in ("app", "pot"):
+        which = "app"
     try:
-        open(LOG_PATH, "w").close()
-        return redirect(url_for("logs_page", msg="Log clear ho gayi", ok="1"))
+        open(_log_path(which), "w").close()
+        return redirect(url_for("logs_page", f=which, msg="Log clear ho gayi", ok="1"))
     except Exception as e:
-        return redirect(url_for("logs_page", msg=f"Clear fail: {e}", ok="0"))
+        return redirect(url_for("logs_page", f=which, msg=f"Clear fail: {e}", ok="0"))
 
 def engine_versions():
     import engines

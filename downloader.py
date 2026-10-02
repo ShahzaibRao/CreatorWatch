@@ -268,7 +268,7 @@ def ensure_yt_stack(progress=None):
             return False, f"potserver download fail: {e}"
     else:
         notes.append("potserver pehle se")
-    _pg("Server start ho raha hai…", 95)
+    _pg("Server start ho raha hai… (pehli boot me npm download ki wajah se 1-2 min lag sakta hai)", 95)
     ok = start_pot_server()
     notes.append("server running" if ok else "server start FAIL — tools/potserver/server.log dekho")
     return ok, "; ".join(notes)
