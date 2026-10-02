@@ -1,5 +1,18 @@
 # Services
 services:
+  # Postgres — production DB. Local dev me chaaho to SQLite bhi chalega
+  # (DATABASE_URL khaali chhoro), lekin compose se dono ek sath khare hote hain.
+  db:
+    image: postgres:16-alpine
+    container_name: creatorwatch-db
+    environment:
+      POSTGRES_DB: creatorwatch
+      POSTGRES_USER: creatorwatch
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
   license-server:
     build: .
     container_name: creatorwatch-license
@@ -8,6 +21,8 @@ services:
     environment:
       HOST: "0.0.0.0"
       PORT: "5001"
+      # Postgres use karo (production); khaali = SQLite ./licenses.db
+      DATABASE_URL: postgresql://creatorwatch:${DB_PASSWORD:-changeme}@db:5432/creatorwatch
       LICENSE_DB: /data/licenses.db
       # PRODUCTION me teenon set karo (neeche dekho). Local test ke liye defaults kaafi.
       LICENSE_ADMIN_TOKEN: ${LICENSE_ADMIN_TOKEN:-change-me}
@@ -18,7 +33,10 @@ services:
       SITE_NAME: ${SITE_NAME:-CreatorWatch}
     volumes:
       - licdata:/data   # DB + key secret yahan — container delete par bhi mehfooz
+    depends_on:
+      - db
     restart: unless-stopped
 
 volumes:
   licdata:
+  pgdata:

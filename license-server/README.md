@@ -95,12 +95,17 @@ curl -X POST localhost:5001/api/licenses/validate \
 
 | Var | Default | What |
 |---|---|---|
-| `LICENSE_DB` | `./licenses.db` | sqlite path (Docker: `/data/licenses.db`) |
+| `DATABASE_URL` | _(empty = SQLite)_ | **Postgres** URL, e.g. `postgresql://user:pass@host:5432/creatorwatch` — set karo to Postgres, khaali to SQLite `./licenses.db` (local dev zero-config) |
+| `LICENSE_DB` | `./licenses.db` | sqlite path — sirf jab `DATABASE_URL` khaali ho (Docker: `/data/licenses.db`) |
 | `LICENSE_ADMIN_TOKEN` | `change-me` | **change in production** |
 | `LICENSE_SESSION_SECRET` | random/boot | set a fixed value in production |
 | `LICENSE_KEY_SECRET` | auto-generated | key-encryption secret — **set in production, kabhi mat badalna** (badla to purani keys reveal nahi hongi) |
 | `SITE_DOMAIN` | _(empty)_ | tumhara domain, e.g. `cw.raoshahzaib.site` — footer me dikhta hai |
 | `SITE_NAME` | `CreatorWatch` | site/brand ka naam |
+
+> **Postgres kab?** Production/k3s par `DATABASE_URL` set karo (tumhare platform ka
+> standard pattern — Supabase bhi chalega). Schema + purani-DB migration khud ho
+> jati hai. Local dev me khaali chhoro — SQLite bina kisi setup ke chalega.
 
 ## Apne domain se chalao (koi hardcode nahi)
 

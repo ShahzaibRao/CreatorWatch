@@ -5,20 +5,19 @@ Tiny cloud service for accounts + license keys.
 The desktop app itself stays 100% local; on startup it calls
 POST /api/licenses/validate and unlocks when the key is valid.
 
-Tables (SQLite, created automatically):
-  users(id, email UNIQUE, password_hash, created_at)
-  licenses(id, user_id FK, key_hash UNIQUE, key_prefix, plan,
-           max_machines, expires_at, revoked, created_at)
-  activations(id, license_id FK, machine_id, activated_at,
-              UNIQUE(license_id, machine_id))
+DB: Postgres jab DATABASE_URL set ho (production), warna SQLite (local dev).
+Tables (created automatically): users, licenses, activations.
 
 Dev run:
   python app.py            # http://127.0.0.1:5001
 
 Env:
+  DATABASE_URL           postgres URL (unset = SQLite ./licenses.db)
   LICENSE_DB             path to sqlite file (default ./licenses.db)
   LICENSE_ADMIN_TOKEN    token for POST /api/admin/licenses (default "change-me")
   LICENSE_SESSION_SECRET flask secret (default: random per boot)
+  LICENSE_KEY_SECRET     key-encryption secret (default: auto-generated file)
+  SITE_DOMAIN / SITE_NAME apne domain se chalao (koi hardcode nahi)
   HOST / PORT            default 127.0.0.1 / 5001
 """
 
@@ -26,15 +25,15 @@ import base64
 import hashlib
 import os
 import secrets
-import sqlite3
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 
-from flask import Flask, g, jsonify, request, session, render_template, redirect, url_for
+from flask import Flask, jsonify, request, session, render_template, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 
+from db import get_db, init_db, close_db, IntegrityError, secret_dir
+
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.environ.get("LICENSE_DB", os.path.join(APP_ROOT, "licenses.db"))
 ADMIN_TOKEN = os.environ.get("LICENSE_ADMIN_TOKEN", "change-me")
 HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", "5001"))
@@ -46,82 +45,13 @@ SITE_NAME = os.environ.get("SITE_NAME", "").strip() or "CreatorWatch"
 app = Flask(__name__)
 app.secret_key = os.environ.get("LICENSE_SESSION_SECRET") or secrets.token_hex(32)
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  created_at TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS licenses (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL REFERENCES users(id),
-  key_hash TEXT UNIQUE NOT NULL,
-  key_prefix TEXT NOT NULL,
-  plan TEXT NOT NULL DEFAULT 'pro',
-  max_machines INTEGER NOT NULL DEFAULT 2,
-  expires_at TEXT,
-  revoked INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS activations (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  license_id INTEGER NOT NULL REFERENCES licenses(id),
-  machine_id TEXT NOT NULL,
-  activated_at TEXT NOT NULL,
-  UNIQUE(license_id, machine_id)
-);
-"""
-
-
 def _now():
     return datetime.now(timezone.utc).isoformat()
 
 
-_schema_ready = False
-
-
-def get_db():
-    global _schema_ready
-    if "db" not in g:
-        g.db = sqlite3.connect(DB_PATH)
-        g.db.row_factory = sqlite3.Row
-        g.db.execute("PRAGMA foreign_keys = ON")
-    if not _schema_ready:
-        # gunicorn jese servers me __main__ nahi chalta — pehli request par schema pakka karo
-        g.db.executescript(SCHEMA)
-        _migrate_schema(g.db)
-        _schema_ready = True
-    return g.db
-
-
 @app.teardown_appcontext
 def _close_db(_exc):
-    db = g.pop("db", None)
-    if db is not None:
-        db.close()
-
-
-def init_db():
-    db = sqlite3.connect(DB_PATH)
-    db.executescript(SCHEMA)
-    _migrate_schema(db)
-    db.commit()
-    db.close()
-
-
-def _migrate_schema(db):
-    """Purani DB me naye columns (M3a: revenue tracking, key reveal)."""
-    cols = {r[1] for r in db.execute("PRAGMA table_info(licenses)").fetchall()}
-    for col, ddl in (("amount_cents", "ADD COLUMN amount_cents INTEGER NOT NULL DEFAULT 0"),
-                     ("currency", "ADD COLUMN currency TEXT NOT NULL DEFAULT 'USD'"),
-                     ("key_enc", "ADD COLUMN key_enc TEXT")):
-        if col not in cols:
-            try:
-                db.execute(f"ALTER TABLE licenses {ddl}")
-            except sqlite3.OperationalError:
-                pass  # concurrent first request ne pehle add kar diya
-    db.commit()
+    close_db()
 
 
 def _key_cipher():
@@ -131,7 +61,7 @@ def _key_cipher():
     from cryptography.fernet import Fernet
     secret = os.environ.get("LICENSE_KEY_SECRET")
     if not secret:
-        p = os.path.join(os.path.dirname(os.path.abspath(DB_PATH)), ".key_secret")
+        p = os.path.join(secret_dir(), ".key_secret")
         try:
             if os.path.exists(p):
                 with open(p) as f:
@@ -266,12 +196,13 @@ def _do_signup(email, password):
     db = get_db()
     try:
         cur = db.execute(
-            "INSERT INTO users(email, password_hash, created_at) VALUES (?,?,?)",
+            "INSERT INTO users(email, password_hash, created_at) VALUES (?,?,?) RETURNING id",
             (email, generate_password_hash(password), _now()))
+        uid = cur.fetchone()["id"]
         db.commit()
-    except sqlite3.IntegrityError:
+    except IntegrityError:
         return None, "email already registered"
-    return cur.lastrowid, None
+    return uid, None
 
 
 def _do_login(email, password):
@@ -630,12 +561,13 @@ def _do_create_license(email, plan="pro", max_machines=2, days=365,
     cur = db.execute(
         "INSERT INTO licenses(user_id, key_hash, key_prefix, plan, max_machines,"
         " expires_at, amount_cents, currency, key_enc, created_at)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?)",
+        " VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id",
         (user["id"], key_hash(key), key[:7], plan, max_machines, expires_at,
          int(amount_cents or 0), (currency or "USD").upper(),
          _encrypt_key(key), _now()))
+    license_id = cur.fetchone()["id"]
     db.commit()
-    return {"license_id": cur.lastrowid, "key": key, "plan": plan,
+    return {"license_id": license_id, "key": key, "plan": plan,
             "max_machines": max_machines, "expires_at": expires_at}, None
 
 
@@ -685,8 +617,13 @@ def validate():
     if not ok:
         return jsonify(valid=False, error=reason), 403
     # Record this machine; a machine re-validating costs no extra seat.
-    db.execute("INSERT OR IGNORE INTO activations(license_id, machine_id, activated_at)"
-               " VALUES (?,?,?)", (lic["id"], machine_id, _now()))
+    if db.dialect == "postgres":
+        db.execute("INSERT INTO activations(license_id, machine_id, activated_at)"
+                   " VALUES (?,?,?) ON CONFLICT DO NOTHING",
+                   (lic["id"], machine_id, _now()))
+    else:
+        db.execute("INSERT OR IGNORE INTO activations(license_id, machine_id, activated_at)"
+                   " VALUES (?,?,?)", (lic["id"], machine_id, _now()))
     db.commit()
     used = db.execute("SELECT COUNT(*) c FROM activations WHERE license_id = ?",
                       (lic["id"],)).fetchone()["c"]
