@@ -40,6 +40,7 @@ Login at `/admin/login` with your `LICENSE_ADMIN_TOKEN`. You get:
 | POST | `/api/admin/licenses` | `X-Admin-Token` | `{email, plan, max_machines, days, amount_cents}` → full key (**returned once**) |
 | POST | `/api/licenses/validate` | — | `{key, machine_id}` → `{valid, plan, expires_at, machines_used}` |
 | POST | `/api/licenses/deactivate` | — | `{key, machine_id}` → frees a seat |
+| GET | `/api/my/licenses/<id>/key` | session | apni full key reveal (copy ke liye) |
 
 ## Try it
 
@@ -67,6 +68,7 @@ curl -X POST localhost:5001/api/licenses/validate \
 | `LICENSE_DB` | `./licenses.db` | sqlite path (Docker: `/data/licenses.db`) |
 | `LICENSE_ADMIN_TOKEN` | `change-me` | **change in production** |
 | `LICENSE_SESSION_SECRET` | random/boot | set a fixed value in production |
+| `LICENSE_KEY_SECRET` | auto-generated | key-encryption secret — **set in production, kabhi mat badalna** (badla to purani keys reveal nahi hongi) |
 | `HOST` / `PORT` | `127.0.0.1` / `5001` | bind |
 
 ## What's next

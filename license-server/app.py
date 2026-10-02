@@ -22,6 +22,7 @@ Env:
   HOST / PORT            default 127.0.0.1 / 5001
 """
 
+import base64
 import hashlib
 import os
 import secrets
@@ -106,16 +107,54 @@ def init_db():
 
 
 def _migrate_schema(db):
-    """Purani DB me naye columns (M3a: revenue tracking)."""
+    """Purani DB me naye columns (M3a: revenue tracking, key reveal)."""
     cols = {r[1] for r in db.execute("PRAGMA table_info(licenses)").fetchall()}
     for col, ddl in (("amount_cents", "ADD COLUMN amount_cents INTEGER NOT NULL DEFAULT 0"),
-                     ("currency", "ADD COLUMN currency TEXT NOT NULL DEFAULT 'USD'")):
+                     ("currency", "ADD COLUMN currency TEXT NOT NULL DEFAULT 'USD'"),
+                     ("key_enc", "ADD COLUMN key_enc TEXT")):
         if col not in cols:
             try:
                 db.execute(f"ALTER TABLE licenses {ddl}")
             except sqlite3.OperationalError:
                 pass  # concurrent first request ne pehle add kar diya
     db.commit()
+
+
+def _key_cipher():
+    """Full key encrypted-at-rest (user dashboard par Reveal ke liye).
+    Secret: LICENSE_KEY_SECRET env; nahi to DB ke sath .key_secret file me
+    (0600). DB leak bhi ho to secret ke baghair keys nahi nikalteen."""
+    from cryptography.fernet import Fernet
+    secret = os.environ.get("LICENSE_KEY_SECRET")
+    if not secret:
+        p = os.path.join(os.path.dirname(os.path.abspath(DB_PATH)), ".key_secret")
+        try:
+            if os.path.exists(p):
+                with open(p) as f:
+                    secret = f.read().strip()
+            else:
+                secret = secrets.token_hex(32)
+                with open(p, "w") as f:
+                    f.write(secret)
+                os.chmod(p, 0o600)
+        except OSError:
+            secret = secrets.token_hex(32)
+    digest = hashlib.sha256(secret.encode("utf-8")).digest()
+    return Fernet(base64.urlsafe_b64encode(digest))
+
+
+def _encrypt_key(key):
+    try:
+        return _key_cipher().encrypt(key.encode("utf-8")).decode("utf-8")
+    except Exception:
+        return None
+
+
+def _decrypt_key(key_enc):
+    try:
+        return _key_cipher().decrypt(key_enc.encode("utf-8")).decode("utf-8")
+    except Exception:
+        return None
 
 
 def new_key():
@@ -246,7 +285,7 @@ def _user_with_licenses(uid):
     if not user:
         return None
     rows = db.execute(
-        "SELECT key_prefix, plan, max_machines, expires_at, revoked, created_at,"
+        "SELECT id, key_prefix, plan, max_machines, expires_at, revoked, created_at,"
         " (SELECT COUNT(*) FROM activations a WHERE a.license_id = licenses.id) AS machines"
         " FROM licenses WHERE user_id = ? ORDER BY id DESC", (uid,)).fetchall()
     u = dict(user)
@@ -329,6 +368,21 @@ def login_page():
 def logout_page():
     session.clear()
     return redirect(url_for("index"))
+
+
+@app.get("/api/my/licenses/<int:lid>/key")
+@login_required
+def my_license_key(lid):
+    """Apni key wapas dekho (encrypted-at-rest se decrypt). Sirf apni license."""
+    row = get_db().execute(
+        "SELECT key_enc FROM licenses WHERE id = ? AND user_id = ? AND revoked = 0",
+        (lid, session["uid"])).fetchone()
+    if not row or not row["key_enc"]:
+        return jsonify(error="key not available — admin se regenerate karwao"), 404
+    key = _decrypt_key(row["key_enc"])
+    if not key:
+        return jsonify(error="decrypt failed"), 500
+    return jsonify(key=key)
 
 
 @app.get("/dashboard")
@@ -472,8 +526,8 @@ def admin_license_regenerate(lid):
     if not lic:
         return redirect(url_for("admin_home", msg="License not found"))
     key = new_key()
-    db.execute("UPDATE licenses SET key_hash = ?, key_prefix = ? WHERE id = ?",
-               (key_hash(key), key[:7], lid))
+    db.execute("UPDATE licenses SET key_hash = ?, key_prefix = ?, key_enc = ? WHERE id = ?",
+               (key_hash(key), key[:7], _encrypt_key(key), lid))
     db.commit()
     return redirect(url_for("admin_home", new_key=key,
                             msg="Nayi key ban gayi — PURANI key ab kaam nahi karegi. Copy kar lo!"))
@@ -570,9 +624,11 @@ def _do_create_license(email, plan="pro", max_machines=2, days=365,
             return None, "days must be a number"
     cur = db.execute(
         "INSERT INTO licenses(user_id, key_hash, key_prefix, plan, max_machines,"
-        " expires_at, amount_cents, currency, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+        " expires_at, amount_cents, currency, key_enc, created_at)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?)",
         (user["id"], key_hash(key), key[:7], plan, max_machines, expires_at,
-         int(amount_cents or 0), (currency or "USD").upper(), _now()))
+         int(amount_cents or 0), (currency or "USD").upper(),
+         _encrypt_key(key), _now()))
     db.commit()
     return {"license_id": cur.lastrowid, "key": key, "plan": plan,
             "max_machines": max_machines, "expires_at": expires_at}, None

@@ -12,7 +12,9 @@
   <tr><th>Key</th><th>Plan</th><th>Machines</th><th>Expires</th><th>Status</th></tr>
   {% for l in user.licenses %}
   <tr>
-    <td><span class="key">{{ l.key_prefix }}-••••-••••</span></td>
+    <td><span class="key">{{ l.key_prefix }}-••••-••••</span><br>
+      <button class="btn ghost" style="padding:4px 12px;font-size:12px;margin-top:6px" onclick="revealKey({{ l.id }}, this)">Show key</button>
+    </td>
     <td>{{ l.plan }}</td>
     <td>{{ l.machines }} / {{ l.max_machines }}</td>
     <td>{{ l.expires_at[:10] if l.expires_at else "Lifetime" }}</td>
@@ -26,4 +28,35 @@
 <p class="muted">Online purchase (Binance Pay) is coming soon. For now, keys are issued manually — create your account today and you'll be first in line.</p>
 {% endif %}
 </div>
+<script>
+function copyText(t, btn){
+  function done(){ var o = btn.textContent; btn.textContent = 'Copied ✓'; setTimeout(function(){ btn.textContent = o; }, 2000); }
+  function fallback(){
+    var ta = document.createElement('textarea');
+    ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch(e){}
+    document.body.removeChild(ta);
+  }
+  if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(t).then(done).catch(fallback); }
+  else { fallback(); }
+}
+function revealKey(lid, btn){
+  btn.disabled = true; btn.textContent = '…';
+  fetch('/api/my/licenses/' + lid + '/key').then(function(r){ return r.json(); }).then(function(j){
+    if (j.key) {
+      var s = document.createElement('span');
+      s.className = 'key'; s.style.fontSize = '13px'; s.textContent = j.key;
+      var c = document.createElement('button');
+      c.className = 'btn ghost'; c.style.cssText = 'padding:4px 12px;font-size:12px;margin-left:6px';
+      c.textContent = 'Copy'; c.onclick = function(){ copyText(j.key, c); };
+      var br = document.createElement('br');
+      btn.replaceWith(br); br.after(s); s.after(c);
+    } else {
+      btn.disabled = false; btn.textContent = 'Show key';
+      alert(j.error || 'unavailable');
+    }
+  });
+}
+</script>
 {% endblock %}
