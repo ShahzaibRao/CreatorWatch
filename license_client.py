@@ -45,10 +45,14 @@ def _now():
 
 
 def _post(path, payload):
+    # NOTE: browser jesa User-Agent lazmi hai — Cloudflare Python-urllib jese
+    # "non-browser" UAs ko error 1010 se block kar deta hai (server tak
+    # request pohanchti hi nahi, aur app "server error 403" dikhata hai).
     req = urllib.request.Request(
         SERVER_URL + path,
         data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json",
+                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) CreatorWatch/1.0"},
         method="POST",
     )
     try:
