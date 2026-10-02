@@ -150,7 +150,7 @@ def pot_running():
     except Exception:
         return False
 
-def start_pot_server():
+def start_pot_server(progress=None):
     """bgutil POT server (deno) background me — ek hi instance."""
     import subprocess
     import sys as _sys
@@ -166,6 +166,28 @@ def start_pot_server():
         logf = open(os.path.join(pdir, "server.log"), "a")
     except Exception:
         logf = subprocess.DEVNULL
+
+    def _pg(title):
+        if progress:
+            try:
+                progress({"title": title, "pct": None})
+            except Exception:
+                pass
+
+    # npm deps: deno install (node_modules) — bina iske "Could not resolve express"
+    if not os.path.isdir(os.path.join(pdir, "node_modules")):
+        _pg("POT server: npm packages install ho rahe hain (deno install)…")
+        try:
+            kw_i = dict(cwd=pdir, stdout=logf, stderr=subprocess.STDOUT)
+            if os.name == "nt":
+                kw_i["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+            subprocess.run([d, "install"], timeout=900, **kw_i)
+        except Exception as e:
+            try:
+                logf.write(f"[deno install fail] {e}\n")
+                logf.flush()
+            except Exception:
+                pass
     try:
         kw = dict(cwd=pdir, stdout=logf, stderr=subprocess.STDOUT)
         if os.name == "nt":
@@ -269,7 +291,7 @@ def ensure_yt_stack(progress=None):
     else:
         notes.append("potserver pehle se")
     _pg("Server start ho raha hai… (pehli boot me npm download ki wajah se 1-2 min lag sakta hai)", 95)
-    ok = start_pot_server()
+    ok = start_pot_server(progress=progress)
     notes.append("server running" if ok else "server start FAIL — tools/potserver/server.log dekho")
     return ok, "; ".join(notes)
 
