@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Log in — CreatorWatch{% endblock %}
+{% block content %}
+<div class="card">
+<form class="auth" method="post" action="/login">
+  <h2 style="margin-bottom:6px">Welcome back</h2>
+  <p class="muted" style="margin-bottom:20px">Log in to manage your licenses.</p>
+  {% if error %}<div class="alert">{{ error }}</div>{% endif %}
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+  <div class="field"><label>Email</label><input type="email" name="email" required placeholder="you@example.com" value="{{ email|default('') }}"></div>
+  <div class="field"><label>Password</label><input type="password" name="password" required placeholder="••••••••"></div>
+  <button class="btn" type="submit" style="width:100%">Log in</button>
+  <p class="muted" style="margin-top:16px;text-align:center">New here? <a href="/signup">Create an account</a></p>
+</form>
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}CreatorWatch — Never miss an upload{% endblock %}
+{% block content %}
+<div class="hero">
+  <h1>Never miss an upload <span>again.</span></h1>
+  <p>CreatorWatch auto-tracks your favorite YouTube, Instagram, X and TikTok creators — and downloads new videos the minute they drop. Set it once, forget it.</p>
+  <a class="btn" href="/signup">Create free account</a>
+  <p class="muted" style="margin-top:14px">Free account · Pay only when you need a license key</p>
+</div>
+
+<div class="grid">
+  <div class="feat"><div class="ic">🎬</div><h3>4 platforms</h3><p>YouTube, Instagram, X (Twitter) and TikTok — single videos or entire channels, your choice.</p></div>
+  <div class="feat"><div class="ic">⏱</div><h3>Auto-check scheduler</h3><p>Checks every creator on your schedule and grabs only new uploads. Runs quietly in the background.</p></div>
+  <div class="feat"><div class="ic">🖥</div><h3>Desktop app</h3><p>Windows &amp; Linux. System tray, download-complete notifications, quality picker up to 4K.</p></div>
+  <div class="feat"><div class="ic">🔑</div><h3>Simple licensing</h3><p>One key, two machines. Manage seats and expiry right from your dashboard.</p></div>
+</div>
+
+<h2 style="text-align:center;margin:10px 0 4px">Pricing</h2>
+<p class="muted" style="text-align:center;margin-bottom:6px">One plan. Everything included.</p>
+<div class="pricing">
+  <div class="price-card">
+    <h2>Pro</h2>
+    <div class="price">$29<small> / year</small></div>
+    <ul>
+      <li>Unlimited creators &amp; downloads</li>
+      <li>All 4 platforms</li>
+      <li>2 machines per key</li>
+      <li>Free updates for a year</li>
+    </ul>
+    <button class="btn" disabled title="Coming soon">Buy with Binance Pay — soon</button>
+    <p class="muted" style="margin-top:12px">Payments open soon. Keys are issued manually for now — <a href="/signup">create an account</a> and you're first in line.</p>
+  </div>
+</div>
+{% endblock %}

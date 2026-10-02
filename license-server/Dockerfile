@@ -4,6 +4,7 @@ WORKDIR /srv/license-server
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app.py .
+COPY templates/ ./templates/
 ENV HOST=0.0.0.0 PORT=5001 LICENSE_DB=/data/licenses.db
 VOLUME ["/data"]
 EXPOSE 5001

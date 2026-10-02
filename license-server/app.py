@@ -29,7 +29,7 @@ import sqlite3
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 
-from flask import Flask, g, jsonify, request, session
+from flask import Flask, g, jsonify, request, session, render_template, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -123,6 +123,41 @@ def login_required(fn):
     return wrapper
 
 
+def login_required_page(fn):
+    """HTML pages: login nahi to /login par bhejo (API wali 401 nahi)."""
+    @wraps(fn)
+    def wrapper(*a, **k):
+        if not current_user():
+            return redirect(url_for("login_page", next=request.path))
+        return fn(*a, **k)
+    return wrapper
+
+
+# ---------------- CSRF (sirf browser forms ke liye; desktop API untouched) ----------------
+
+def _csrf_token():
+    tok = session.get("_csrf")
+    if not tok:
+        tok = secrets.token_hex(16)
+        session["_csrf"] = tok
+    return tok
+
+
+def _check_csrf():
+    want = session.get("_csrf")
+    got = request.form.get("_csrf", "")
+    return bool(want) and secrets.compare_digest(got, want)
+
+
+@app.context_processor
+def _inject_tpl():
+    return {"csrf_token": _csrf_token, "user": current_user()}
+
+
+def _safe_next(url):
+    return url if url and url.startswith("/") and not url.startswith("//") else None
+
+
 def require_admin(fn):
     @wraps(fn)
     def wrapper(*a, **k):
@@ -132,26 +167,35 @@ def require_admin(fn):
     return wrapper
 
 
-@app.get("/")
-def index():
-    return jsonify(service="creatorwatch-license-server", version="0.1.0",
+@app.get("/api/health")
+def health():
+    return jsonify(service="creatorwatch-license-server", version="0.2.0",
                    endpoints=["POST /api/signup", "POST /api/login",
                               "GET /api/me", "POST /api/admin/licenses",
                               "POST /api/licenses/validate",
                               "POST /api/licenses/deactivate"])
 
 
-# ---------------- accounts ----------------
+@app.get("/")
+def index():
+    """Public landing page — yehi cw.raoshahzaib.site par khulega."""
+    return render_template("index.html")
 
-@app.post("/api/signup")
-def signup():
-    data = request.get_json(force=True, silent=True) or {}
-    email = (data.get("email") or "").strip().lower()
-    password = data.get("password") or ""
-    if "@" not in email or "." not in email.split("@")[-1]:
-        return jsonify(error="valid email required"), 400
+
+# ---------------- accounts (core logic: API + HTML dono istemal karte hain) ----------------
+
+def _valid_email(email):
+    return "@" in email and "." in email.split("@")[-1]
+
+
+def _do_signup(email, password):
+    """Returns (user_id, error). error None = kamyab."""
+    email = (email or "").strip().lower()
+    password = password or ""
+    if not _valid_email(email):
+        return None, "valid email required"
     if len(password) < 8:
-        return jsonify(error="password must be at least 8 characters"), 400
+        return None, "password must be at least 8 characters"
     db = get_db()
     try:
         cur = db.execute(
@@ -159,21 +203,53 @@ def signup():
             (email, generate_password_hash(password), _now()))
         db.commit()
     except sqlite3.IntegrityError:
-        return jsonify(error="email already registered"), 409
-    session["uid"] = cur.lastrowid
-    return jsonify(id=cur.lastrowid, email=email), 201
+        return None, "email already registered"
+    return cur.lastrowid, None
+
+
+def _do_login(email, password):
+    """Returns (user_dict, error)."""
+    email = (email or "").strip().lower()
+    row = get_db().execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+    if not row or not check_password_hash(row["password_hash"], password or ""):
+        return None, "invalid email or password"
+    return {"id": row["id"], "email": row["email"]}, None
+
+
+def _user_with_licenses(uid):
+    db = get_db()
+    user = db.execute(
+        "SELECT id, email, created_at FROM users WHERE id = ?", (uid,)).fetchone()
+    if not user:
+        return None
+    rows = db.execute(
+        "SELECT key_prefix, plan, max_machines, expires_at, revoked, created_at,"
+        " (SELECT COUNT(*) FROM activations a WHERE a.license_id = licenses.id) AS machines"
+        " FROM licenses WHERE user_id = ? ORDER BY id DESC", (uid,)).fetchall()
+    u = dict(user)
+    u["licenses"] = [dict(r) for r in rows]
+    return u
+
+
+@app.post("/api/signup")
+def signup():
+    data = request.get_json(force=True, silent=True) or {}
+    uid, err = _do_signup(data.get("email"), data.get("password"))
+    if err:
+        code = 409 if err == "email already registered" else 400
+        return jsonify(error=err), code
+    session["uid"] = uid
+    return jsonify(id=uid, email=(data.get("email") or "").strip().lower()), 201
 
 
 @app.post("/api/login")
 def login():
     data = request.get_json(force=True, silent=True) or {}
-    email = (data.get("email") or "").strip().lower()
-    password = data.get("password") or ""
-    row = get_db().execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
-    if not row or not check_password_hash(row["password_hash"], password):
-        return jsonify(error="invalid email or password"), 401
-    session["uid"] = row["id"]
-    return jsonify(id=row["id"], email=row["email"])
+    user, err = _do_login(data.get("email"), data.get("password"))
+    if err:
+        return jsonify(error=err), 401
+    session["uid"] = user["id"]
+    return jsonify(id=user["id"], email=user["email"])
 
 
 @app.post("/api/logout")
@@ -185,13 +261,58 @@ def logout():
 @app.get("/api/me")
 @login_required
 def me():
-    user = current_user()
-    rows = get_db().execute(
-        "SELECT key_prefix, plan, max_machines, expires_at, revoked, created_at,"
-        " (SELECT COUNT(*) FROM activations a WHERE a.license_id = licenses.id) AS machines"
-        " FROM licenses WHERE user_id = ? ORDER BY id DESC", (user["id"],)).fetchall()
-    user["licenses"] = [dict(r) for r in rows]
-    return jsonify(user)
+    return jsonify(_user_with_licenses(session["uid"]))
+
+
+# ---------------- web pages ----------------
+
+@app.route("/signup", methods=["GET", "POST"])
+def signup_page():
+    if current_user():
+        return redirect(url_for("dashboard"))
+    err, email = "", ""
+    if request.method == "POST":
+        email = request.form.get("email", "")
+        if not _check_csrf():
+            err = "session expired — page reload kar ke dobara try karo"
+        else:
+            uid, err = _do_signup(email, request.form.get("password", ""))
+            if uid:
+                session["uid"] = uid
+                return redirect(url_for("dashboard"))
+    return render_template("signup.html", error=err, email=email)
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login_page():
+    if current_user():
+        return redirect(url_for("dashboard"))
+    err, email = "", ""
+    nxt = _safe_next(request.args.get("next") or request.form.get("next", ""))
+    if request.method == "POST":
+        email = request.form.get("email", "")
+        if not _check_csrf():
+            err = "session expired — page reload kar ke dobara try karo"
+        else:
+            user, err = _do_login(email, request.form.get("password", ""))
+            if user:
+                session["uid"] = user["id"]
+                return redirect(nxt or url_for("dashboard"))
+    return render_template("login.html", error=err, email=email,
+                           next=request.args.get("next", ""))
+
+
+@app.get("/logout")
+def logout_page():
+    session.clear()
+    return redirect(url_for("index"))
+
+
+@app.get("/dashboard")
+@login_required_page
+def dashboard():
+    return render_template("dashboard.html",
+                           user=_user_with_licenses(session["uid"]))
 
 
 # ---------------- licenses (admin) ----------------
