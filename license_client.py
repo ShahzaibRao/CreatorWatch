@@ -27,7 +27,9 @@ import urllib.error
 import uuid
 from datetime import datetime, timedelta, timezone
 
-SERVER_URL = os.environ.get("LICENSE_SERVER_URL", "http://127.0.0.1:5001").rstrip("/")
+# Production default: live license server. Local dev / forks ke liye
+# LICENSE_SERVER_URL env se override hota hai (e.g. http://127.0.0.1:5001).
+SERVER_URL = os.environ.get("LICENSE_SERVER_URL", "https://cw.raoshahzaib.site").rstrip("/")
 TIMEOUT = 8
 RECHECK_HOURS = 1
 GRACE_DAYS = 7
