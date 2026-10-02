@@ -38,6 +38,10 @@ DB_PATH = os.environ.get("LICENSE_DB", os.path.join(APP_ROOT, "licenses.db"))
 ADMIN_TOKEN = os.environ.get("LICENSE_ADMIN_TOKEN", "change-me")
 HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", "5001"))
+# Koi domain hardcode nahi — jo clone kare apne domain se chalaye:
+#   SITE_DOMAIN=cw.raoshahzaib.site SITE_NAME=CreatorWatch python app.py
+SITE_DOMAIN = os.environ.get("SITE_DOMAIN", "").strip().rstrip("/")
+SITE_NAME = os.environ.get("SITE_NAME", "").strip() or "CreatorWatch"
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("LICENSE_SESSION_SECRET") or secrets.token_hex(32)
@@ -213,7 +217,8 @@ def _check_csrf():
 
 @app.context_processor
 def _inject_tpl():
-    return {"csrf_token": _csrf_token, "user": current_user()}
+    return {"csrf_token": _csrf_token, "user": current_user(),
+            "site_domain": SITE_DOMAIN, "site_name": SITE_NAME}
 
 
 def _safe_next(url):
@@ -240,7 +245,7 @@ def health():
 
 @app.get("/")
 def index():
-    """Public landing page — yehi cw.raoshahzaib.site par khulega."""
+    """Public landing page."""
     return render_template("index.html")
 
 

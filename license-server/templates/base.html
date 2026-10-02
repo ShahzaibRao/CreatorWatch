@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}CreatorWatch{% endblock %}</title>
+<title>{% block title %}{{ site_name }}{% endblock %}</title>
 <style>
 :root{--bg:#0c1117;--card:#131a24;--card2:#0f1520;--line:#1e2a3a;--txt:#e8edf3;--muted:#8b95a5;--teal:#12b981;--teal-d:#0d8f63;--amber:#f5a524;--red:#f0524f}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -63,7 +63,7 @@ footer{border-top:1px solid var(--line);padding:22px 0;color:var(--muted);font-s
 </head>
 <body>
 <nav><div class="wrap">
-  <a class="brand" href="/"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg></span>CreatorWatch</a>
+  <a class="brand" href="/"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg></span>{{ site_name }}</a>
   <div class="navlinks">
     {% if is_admin %}
       <a class="btn ghost" href="/admin">Admin</a>
@@ -80,6 +80,6 @@ footer{border-top:1px solid var(--line);padding:22px 0;color:var(--muted);font-s
 <main><div class="wrap">
 {% block content %}{% endblock %}
 </div></main>
-<footer>© 2026 CreatorWatch · Accounts &amp; licenses · <span class="muted">cw.raoshahzaib.site</span></footer>
+<footer>© 2026 {{ site_name }} · Accounts &amp; licenses{% if site_domain %} · <span class="muted">{{ site_domain }}</span>{% endif %}</footer>
 </body>
 </html>

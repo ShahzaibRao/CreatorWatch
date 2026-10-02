@@ -13,6 +13,9 @@ services:
       LICENSE_ADMIN_TOKEN: ${LICENSE_ADMIN_TOKEN:-change-me}
       LICENSE_SESSION_SECRET: ${LICENSE_SESSION_SECRET:-}
       LICENSE_KEY_SECRET: ${LICENSE_KEY_SECRET:-}
+      # Koi domain hardcode nahi — apne domain se chalao:
+      SITE_DOMAIN: ${SITE_DOMAIN:-}
+      SITE_NAME: ${SITE_NAME:-CreatorWatch}
     volumes:
       - licdata:/data   # DB + key secret yahan — container delete par bhi mehfooz
     restart: unless-stopped

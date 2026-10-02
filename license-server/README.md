@@ -44,7 +44,7 @@ docker compose up -d
 > volume me DB + secrets rehte hain, `docker compose down` par bhi safe.
 
 Open in browser:
-- `/` — landing page (this is what `cw.raoshahzaib.site` will serve)
+- `/` — landing page (yehi tumhare domain par khulega — `SITE_DOMAIN` set karo)
 - `/signup`, `/login`, `/dashboard` — user accounts & licenses
 - `/admin` — admin panel (token = `LICENSE_ADMIN_TOKEN`)
 
@@ -99,6 +99,17 @@ curl -X POST localhost:5001/api/licenses/validate \
 | `LICENSE_ADMIN_TOKEN` | `change-me` | **change in production** |
 | `LICENSE_SESSION_SECRET` | random/boot | set a fixed value in production |
 | `LICENSE_KEY_SECRET` | auto-generated | key-encryption secret — **set in production, kabhi mat badalna** (badla to purani keys reveal nahi hongi) |
+| `SITE_DOMAIN` | _(empty)_ | tumhara domain, e.g. `cw.raoshahzaib.site` — footer me dikhta hai |
+| `SITE_NAME` | `CreatorWatch` | site/brand ka naam |
+
+## Apne domain se chalao (koi hardcode nahi)
+
+```bash
+cd license-server
+SITE_DOMAIN=cw.raoshahzaib.site SITE_NAME=CreatorWatch python app.py
+# ya docker: -e SITE_DOMAIN=cw.raoshahzaib.site
+# ya compose:  SITE_DOMAIN=cw.raoshahzaib.site docker compose up -d
+```
 | `HOST` / `PORT` | `127.0.0.1` / `5001` | bind |
 
 ## What's next

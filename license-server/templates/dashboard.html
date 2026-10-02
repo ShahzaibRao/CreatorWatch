@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — CreatorWatch{% endblock %}
+{% block title %}Dashboard — {{ site_name }}{% endblock %}
 {% block content %}
 <div class="dash-head">
   <div><h2 style="margin-bottom:2px">Your licenses</h2><p class="muted">{{ user.email }}</p></div>
@@ -22,7 +22,7 @@
   </tr>
   {% endfor %}
 </table>
-<p class="muted" style="margin-top:14px">Paste your full key into the CreatorWatch desktop app to activate it.</p>
+<p class="muted" style="margin-top:14px">Paste your full key into the {{ site_name }} desktop app to activate it.</p>
 {% else %}
 <p style="margin-bottom:8px">No licenses yet.</p>
 <p class="muted">Online purchase (Binance Pay) is coming soon. For now, keys are issued manually — create your account today and you'll be first in line.</p>

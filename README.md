@@ -11,7 +11,7 @@ then only **new uploads** are downloaded on every interval.
 | Part | What it does | Where it runs |
 |---|---|---|
 | **Desktop app** | Dashboard, scheduler, downloads, local SQLite DB | Your PC (Windows EXE / Linux / Python source) |
-| **License server** | Accounts, license keys, web UI, admin panel | Cloud — `cw.raoshahzaib.site` (see `license-server/`) |
+| **License server** | Accounts, license keys, web UI, admin panel | Cloud — apne domain par (e.g. `cw.raoshahzaib.site`, see `license-server/`) |
 
 The desktop app stays 100% local — downloads, database and scheduler never
 leave your machine. The cloud part only handles accounts + licenses.
@@ -61,7 +61,7 @@ safe across uninstall/reinstall. Downloads default to `~/Downloads/CreatorWatch`
 
 ## License server — run it
 
-The server behind `cw.raoshahzaib.site`: landing page, signup/login,
+The server behind your domain: landing page, signup/login,
 user dashboard (licenses), admin panel (users, revenue, devices).
 
 ```bash

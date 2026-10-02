@@ -1,0 +1,6 @@
+# Build context me ye kabhi na jayen (DB/secrets image me nahi!)
+licenses.db
+.key_secret
+__pycache__/
+*.pyc
+*.pyo
