@@ -17,6 +17,7 @@ if is_frozen():
 ensure_pylibs()  # exe: updated engines (tools/pylibs) bundled se pehle load hon
 import database as db
 import license_client as lic  # M2: license gate (cloud branch only)
+import notify  # download-complete OS popup (cloud branch)
 from translations import LANGS, text as _text
 from downloader import detect_platform, prospect_folder, check_profile, check_all_profiles, check_due_profiles, first_run
 
@@ -224,6 +225,8 @@ def run_first_download(pid):
         print(f"[FIRST] {p['name']} {p['url']}", flush=True)
         new, errs = first_run(p, progress=job_cb(pid))
         print(f"[FIRST DONE] {p['name']} new={new} errors={errs[:2] if errs else []}", flush=True)
+        if new:
+            _toast_done(p, new)
         finish_job(pid, f"{new} new" if new else (errs[0][:120] if errs else "koi fresh upload nahi"))
     except Exception as e:
         print(f"[FIRST FAIL] {e}", flush=True)
@@ -241,6 +244,8 @@ def run_check(pid):
             finish_job(pid, "profile nahi mila")
             return
         new, errs = check_profile(p, progress=job_cb(pid))
+        if new:
+            _toast_done(p, new)
         finish_job(pid, f"{new} new" if new else (errs[0][:120] if errs else "koi fresh upload nahi"))
     except Exception as e:
         finish_job(pid, f"fail: {e}")
@@ -289,6 +294,17 @@ def finish_job(pid, result):
         if pid in JOBS:
             JOBS[pid].update({"state": "done", "result": result, "pct": 100,
                               "done": JOBS[pid].get("total", 1), "ts": time.time()})
+
+def _toast_done(p, new):
+    """Download-complete popup (cloud branch). Never breaks the worker."""
+    try:
+        folder = prospect_folder(p["name"], p["platform"], p.get("folder") or "")
+    except Exception:
+        folder = ""
+    try:
+        notify.download_complete(p["name"], new, folder)
+    except Exception as e:
+        print(f"[TOAST FAIL] {e}", flush=True)
 
 # ---- M2: license activation (cloud branch only) ----
 _ERR_UR = {
