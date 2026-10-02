@@ -295,6 +295,74 @@ def finish_job(pid, result):
             JOBS[pid].update({"state": "done", "result": result, "pct": 100,
                               "done": JOBS[pid].get("total", 1), "ts": time.time()})
 
+def _asset_path(name):
+    """assets/ ka path — frozen (PyInstaller) aur source dono me."""
+    import sys as _s
+    base = getattr(_s, "_MEIPASS", None) or app_dir()
+    return os.path.join(base, "assets", name)
+
+def _setup_tray(win):
+    """X dabane par window band karne ki bajaye tray me chhupao.
+    Tray menu: Open CreatorWatch / Exit. Returns True agar tray lag gaya."""
+    try:
+        import pystray
+        from pystray import MenuItem, Menu
+        from PIL import Image
+    except Exception as e:
+        print(f"[TRAY] pystray/Pillow nahi: {e} — X dabane par app band hogi", flush=True)
+        return False
+    try:
+        ip = _asset_path("icon.png")
+        image = Image.open(ip) if os.path.exists(ip) else None
+    except Exception:
+        image = None
+    if image is None:
+        image = Image.new("RGBA", (64, 64), (18, 185, 129, 255))
+    state = {"quit": False}
+
+    def _on_open(icon, item):
+        try:
+            win.show()
+        except Exception:
+            pass
+
+    def _on_quit(icon, item):
+        state["quit"] = True
+        try:
+            icon.stop()
+        except Exception:
+            pass
+        try:
+            win.destroy()
+        except Exception:
+            pass
+
+    def _on_closing():
+        if state["quit"]:
+            return True   # asal me band karo
+        try:
+            win.hide()
+        except Exception:
+            pass
+        try:
+            tray_icon.notify("CreatorWatch background me chal rahi hai",
+                             "Wapas kholne ke liye tray icon par double-click karo.")
+        except Exception:
+            pass
+        return False      # close cancel -> tray me
+
+    menu = Menu(MenuItem("Open CreatorWatch", _on_open, default=True),
+                MenuItem("Exit", _on_quit))
+    tray_icon = pystray.Icon("CreatorWatch", image, "CreatorWatch", menu)
+    try:
+        win.events.closing += _on_closing
+    except Exception as e:
+        print(f"[TRAY] closing hook fail: {e}", flush=True)
+        return False
+    threading.Thread(target=tray_icon.run, daemon=True).start()
+    print("[TRAY] lag gaya — X dabane par app tray me jayegi", flush=True)
+    return True
+
 def _toast_done(p, new):
     """Download-complete popup (cloud branch). Never breaks the worker."""
     # NOTE: p["folder"] DB me pehle se resolved full path hai — isay dobara
@@ -987,8 +1055,9 @@ if __name__ == "__main__":
                 except Exception:
                     time.sleep(0.5)
             try:
-                webview.create_window(f"CreatorWatch v{VERSION}", "http://127.0.0.1:5000",
+                win = webview.create_window(f"CreatorWatch v{VERSION}", "http://127.0.0.1:5000",
                                       width=1200, height=800, min_size=(360, 640), js_api=Api())
+                _setup_tray(win)  # X -> tray; fail ho to purana behavior (X = band)
                 webview.start()
                 os._exit(0)
             except Exception as e:
