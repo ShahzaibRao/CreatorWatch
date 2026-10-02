@@ -1,0 +1,2 @@
+# Same stack as the main app — nothing new to learn.
+Flask>=3.0.0
