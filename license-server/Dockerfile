@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 FROM python:3.12-slim
 WORKDIR /srv/license-server
 COPY --from=builder /install /usr/local
-COPY app.py .
+COPY app.py db.py ./
 COPY templates/ ./templates/
 ENV HOST=0.0.0.0 PORT=5001 LICENSE_DB=/data/licenses.db \
     PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
