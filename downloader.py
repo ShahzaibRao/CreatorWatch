@@ -175,16 +175,41 @@ def start_pot_server(progress=None):
                 pass
 
     # npm deps: deno install (node_modules) — bina iske "Could not resolve express"
-    if not os.path.isdir(os.path.join(pdir, "node_modules")):
+    # dobara install jab: marker nahi, ya node_modules dir hi nahi (delete/partial)
+    nm_dir = os.path.join(pdir, "node_modules")
+    nm_ok = os.path.join(nm_dir, ".install_ok")
+
+    def _mark_install_ok():
+        # /ping hi ground truth hai — server chal para to deps theek hain
+        try:
+            os.makedirs(nm_dir, exist_ok=True)
+            with open(nm_ok, "w") as fh:
+                fh.write("ok")
+        except Exception:
+            pass
+
+    if not (os.path.exists(nm_ok) and os.path.isdir(nm_dir)):
         _pg("POT server: npm packages install ho rahe hain (deno install)…")
+        ok_install = False
         try:
             kw_i = dict(cwd=pdir, stdout=logf, stderr=subprocess.STDOUT)
             if os.name == "nt":
                 kw_i["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-            subprocess.run([d, "install"], timeout=900, **kw_i)
+            # --min-dep-age 0: deno ki 24h "minimum dependency age" policy
+            # taaza npm versions ko block karti hai — isay off karo
+            r = subprocess.run([d, "install", "--min-dep-age", "0"], timeout=900, **kw_i)
+            ok_install = (r.returncode == 0)
         except Exception as e:
             try:
                 logf.write(f"[deno install fail] {e}\n")
+                logf.flush()
+            except Exception:
+                pass
+        if ok_install:
+            _mark_install_ok()
+        else:
+            try:
+                logf.write("[deno install] FAILED — agli dafa dobara try hoga\n")
                 logf.flush()
             except Exception:
                 pass
@@ -197,6 +222,7 @@ def start_pot_server(progress=None):
             try:
                 with urllib.request.urlopen(POT_URL + "/ping", timeout=2) as r:
                     if r.status == 200:
+                        _mark_install_ok()
                         return True
             except Exception:
                 pass
@@ -204,7 +230,10 @@ def start_pot_server(progress=None):
             _t.sleep(1)
     except Exception:
         pass
-    return pot_running()
+    if pot_running():
+        _mark_install_ok()
+        return True
+    return False
 
 WALL_HINTS = ("Sign in to confirm", "not a bot", "needs to be reloaded")
 
@@ -286,6 +315,12 @@ def ensure_yt_stack(progress=None):
                 with open(dest, "wb") as fh:
                     fh.write(data)
             notes.append("potserver files ok")
+            if "package.json" in missing:
+                # deps badal sakti hain — install dobara ho
+                try:
+                    os.remove(os.path.join(pdir, "node_modules", ".install_ok"))
+                except Exception:
+                    pass
         except Exception as e:
             return False, f"potserver download fail: {e}"
     else:
