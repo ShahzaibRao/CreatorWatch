@@ -1,7 +1,9 @@
 # License server — Docker image CI.
 #
 # license-server/ me har tabdeeli par multi-arch image ban kar Docker Hub
-# par push hoti hai:  <DOCKERHUB_USERNAME>/creatorwatch-license:latest
+# par push hoti hai:  <DOCKERHUB_USERNAME>/creatorwatch-license
+# Tags: latest (har build) + current app release (e.g. v0.5.4 — rollback
+# me seedha version nazar aaye) + license-server-v* manual immutable tags.
 # Isi image se ArgoCD deploy hoga, aur koi bhi `docker run` kar sakega.
 #
 # Required repo secrets (GitHub → Settings → Secrets and variables → Actions):
@@ -40,6 +42,15 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Latest app release tag (e.g. v0.5.4)
+        id: apprel
+        run: |
+          TAG=$(gh release view --json tagName --jq .tagName 2>/dev/null || true)
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Latest app release: $TAG"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Image tags
         id: meta
         uses: docker/metadata-action@v5
@@ -47,7 +58,7 @@ jobs:
           images: ${{ secrets.DOCKERHUB_USERNAME }}/creatorwatch-license
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/cloud' }}
-            type=sha,prefix=sha-,format=short
+            type=raw,value=${{ steps.apprel.outputs.tag }},enable=${{ steps.apprel.outputs.tag != '' }}
             type=match,pattern=license-server-v(.*),group=1
 
       - name: Build + push (amd64 + arm64)
