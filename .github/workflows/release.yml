@@ -35,7 +35,7 @@ jobs:
         run: pip install -r requirements.txt pyinstaller
 
       - name: Build EXE (PyInstaller onedir — stable, no temp-extract)
-        run: pyinstaller --noconfirm --onedir --noconsole --name CreatorWatch --add-data "templates;templates" --add-data "vendor;vendor" --collect-all webview --exclude-module yt_dlp --exclude-module gallery_dl --exclude-module imageio_ffmpeg --exclude-module yt_dlp_plugins --exclude-module PIL app.py
+        run: pyinstaller --noconfirm --onedir --noconsole --name CreatorWatch --add-data "templates;templates" --add-data "vendor;vendor" --collect-all webview --collect-all windows_toasts --collect-all winrt --exclude-module yt_dlp --exclude-module gallery_dl --exclude-module imageio_ffmpeg --exclude-module yt_dlp_plugins --exclude-module PIL app.py
 
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
