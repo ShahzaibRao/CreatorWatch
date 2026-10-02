@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CreatorWatch — Auto-track YouTube, TikTok, Instagram & X</title>
-<meta name="description" content="CreatorWatch auto-tracks your favourite creators and downloads only new uploads. Windows + Linux. Free.">
+<meta name="description" content="CreatorWatch auto-tracks your favourite creators and downloads only new uploads. Windows + Linux. $29/year license key.">
 <style>
 :root{--bg:#0b0f14;--surface:#12181f;--surface2:#0e141b;--border:#212b36;--text:#e8edf2;--muted:#93a0b0;--accent:#12b981;--accent-d:#0a8f64;--warn:#f5a524;--danger:#f0524f;--info:#3b9eff;--shadow:0 8px 28px rgba(0,0,0,.35);--r:14px}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
@@ -26,6 +26,7 @@ a{color:var(--info);text-decoration:none}
 .hero .row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 .badges{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:18px}
 .badge{font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--muted)}
+.badge.key{border-color:var(--accent);color:var(--accent)}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:16px}
 .card-h{padding:15px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .card-h h2{margin:0;font-size:15px}
@@ -54,6 +55,8 @@ tr:last-child td{border-bottom:0}
 code{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 7px;font-size:12.5px}
 .foot{text-align:center;color:var(--muted);font-size:12.5px;margin-top:26px}
 h2.sec{font-size:22px;margin:34px 0 14px}
+.price{font-size:15px;color:var(--muted);margin-top:14px}
+.price b{color:var(--accent);font-size:20px}
 @media(max-width:800px){.stats{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}}
 </style>
 </head>
@@ -67,13 +70,23 @@ h2.sec{font-size:22px;margin:34px 0 14px}
 
 <div class="hero">
   <h1>Never miss an upload. <span>Ever again.</span></h1>
-  <p>Add a YouTube, TikTok, Instagram or X link once. CreatorWatch checks every few minutes and downloads <b>only new uploads</b> — into neat <code>platform/creator</code> folders. Windows + Linux. 4 languages. Free.</p>
+  <p>Add a YouTube, TikTok, Instagram or X link once. CreatorWatch checks every few minutes and downloads <b>only new uploads</b> — into neat <code>platform/creator</code> folders. Windows + Linux. 4 languages. One <b>$29/year</b> license key.</p>
   <div class="row">
     <a class="btn" href="https://github.com/ShahzaibRao/CreatorWatch/releases/latest">⬇ Download for Windows</a>
     <a class="btn ghost" href="https://github.com/ShahzaibRao/CreatorWatch#readme">📖 How it works</a>
   </div>
-  <div class="badges"><span class="badge">v0.4.0</span><span class="badge">Windows Setup + Portable</span><span class="badge">Linux tarball</span><span class="badge">EN · اردو · ES · 中文</span><span class="badge">Dark / Light</span></div>
+  <div class="badges"><span class="badge">v0.5.4</span><span class="badge key">🔑 $29/year license</span><span class="badge">Windows Setup + Portable</span><span class="badge">Linux tarball</span><span class="badge">EN · اردو · ES · 中文</span><span class="badge">Dark / Light</span></div>
 </div>
+
+<h2 class="sec">🔑 Licensing — simple</h2>
+<div class="card"><div class="card-b"><div class="steps">
+<div class="step"><b>1.</b> <a href="https://github.com/ShahzaibRao/CreatorWatch/releases/latest">Download</a> & install the app.</div>
+<div class="step"><b>2.</b> Sign up and grab your license key — <b>$29/year</b>.</div>
+<div class="step"><b>3.</b> Paste the key in the app's <b>Activate</b> page. First activation needs internet; afterwards the app keeps working offline (7-day grace).</div>
+<div class="step"><b>4.</b> One key covers up to <b>2 machines</b> — free a seat anytime from your dashboard.</div>
+</div>
+<p class="price">Simple pricing: <b>$29</b> / year · your data stays on your PC — the cloud only handles accounts & keys.</p>
+</div></div>
 
 <h2 class="sec">👀 Live look (sample data)</h2>
 <div class="card"><div class="card-h"><h2>Dashboard</h2><span>this is how the app looks</span></div>
@@ -96,7 +109,7 @@ h2.sec{font-size:22px;margin:34px 0 14px}
 <p style="color:var(--muted);font-size:13px">⬇ Downloading: <b>tech_daily</b> 3/5 · 720p · <b>1.4 MB/s</b> ━━━━━━ 62%</p>
 </div></div>
 
-<h2 class="sec">✨ Features (raw list)</h2>
+<h2 class="sec">✨ Features</h2>
 <div class="grid">
 <div class="feat"><div class="ic">🎯</div><h3>New uploads only</h3><p>First add grabs the latest video; old ones are marked seen forever. Every check downloads just fresh uploads — even if you delete files.</p></div>
 <div class="feat"><div class="ic">🎬</div><h3>Videos + Shorts scopes</h3><p>Channel link monitors both; a shorts link watches shorts only; a video link watches videos only.</p></div>
@@ -107,14 +120,17 @@ h2.sec{font-size:22px;margin:34px 0 14px}
 <div class="feat"><div class="ic">📁</div><h3>Your folders</h3><p>Global root + per-profile folder, native folder picker, free-space display, <code>platform/creator</code> layout.</p></div>
 <div class="feat"><div class="ic">🌐</div><h3>4 languages + themes</h3><p>English, Roman Urdu, Español, 中文 with one-click toggle; dark/light mode, mobile responsive.</p></div>
 <div class="feat"><div class="ic">⬆️</div><h3>Self-updating</h3><p>App + yt-dlp/gallery-dl engines update from inside the app; releases built automatically.</p></div>
+<div class="feat"><div class="ic">🗂️</div><h3>System tray</h3><p>Closing the window keeps it running in the tray — right-click for Open / Exit. Your downloads never stop.</p></div>
+<div class="feat"><div class="ic">1️⃣</div><h3>Single instance</h3><p>Opening the app twice doesn't clutter your screen — the running window just comes back.</p></div>
+<div class="feat"><div class="ic">🔑</div><h3>License + offline grace</h3><p>Activate once with your key; the app re-checks hourly and keeps working offline for 7 days.</p></div>
 </div>
 
 <h2 class="sec">🚀 Get it in 2 minutes</h2>
 <div class="card"><div class="card-b"><div class="steps">
 <div class="step"><b>1.</b> <a href="https://github.com/ShahzaibRao/CreatorWatch/releases/latest">Download</a> the Setup (Windows) or tarball (Linux).</div>
-<div class="step"><b>2.</b> Install & launch — paste a channel link, pick a folder, done. First video downloads instantly.</div>
+<div class="step"><b>2.</b> Install & launch — paste your <b>license key</b> on the Activate page, then add a channel link and pick a folder. First video downloads instantly.</div>
 <div class="step"><b>3.</b> For Instagram/X: import login cookies on the 🍪 page. For YouTube walls: Updates → Setup YouTube.</div>
 </div></div></div>
 
-<div class="foot">CreatorWatch v0.4.0 · Free & open source · <a href="https://github.com/ShahzaibRao/CreatorWatch">GitHub</a></div>
+<div class="foot">CreatorWatch v0.5.4 · $29/year license · Open source · <a href="https://github.com/ShahzaibRao/CreatorWatch">GitHub</a></div>
 </div></body></html>
