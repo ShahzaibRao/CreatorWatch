@@ -9,7 +9,23 @@
 {% if msg %}<div class="ok">{{ msg }}</div>{% endif %}
 {% if new_key %}
 <div class="ok"><b>New license key (sirf abhi dikhegi — copy kar lo):</b><br>
-<span class="key" style="font-size:16px">{{ new_key }}</span></div>
+<span class="key" id="newkey" style="font-size:16px">{{ new_key }}</span>
+<button class="btn" style="margin-left:10px;padding:8px 18px;font-size:14px" onclick="copyKey(this)">Copy</button></div>
+<script>
+function copyKey(btn){
+  var t = document.getElementById('newkey').innerText.trim();
+  function done(){ btn.textContent = 'Copied ✓'; setTimeout(function(){ btn.textContent = 'Copy'; }, 2000); }
+  function fallback(){
+    var ta = document.createElement('textarea');
+    ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch(e){}
+    document.body.removeChild(ta);
+  }
+  if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(t).then(done).catch(fallback); }
+  else { fallback(); }
+}
+</script>
 {% endif %}
 
 <div class="grid">
@@ -50,6 +66,10 @@
       <form method="post" action="/admin/licenses/{{ l.id }}/revoke" style="display:inline">
         <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <button class="btn ghost" style="padding:6px 12px;font-size:13px" type="submit">{% if l.revoked %}Unrevoke{% else %}Revoke{% endif %}</button>
+      </form>
+      <form method="post" action="/admin/licenses/{{ l.id }}/regenerate" style="display:inline" onsubmit="return confirm('Nayi key ban jayegi — PURANI key kaam nahi karegi. Continue?')">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn ghost" style="padding:6px 12px;font-size:13px" type="submit">Regenerate</button>
       </form>
       <form method="post" action="/admin/licenses/{{ l.id }}/delete" style="display:inline" onsubmit="return confirm('Delete this license permanently?')">
         <input type="hidden" name="_csrf" value="{{ csrf_token() }}">

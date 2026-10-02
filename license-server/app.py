@@ -461,6 +461,24 @@ def admin_license_revoke(lid):
     return redirect(url_for("admin_home", msg="License updated"))
 
 
+@app.post("/admin/licenses/<int:lid>/regenerate")
+@admin_required_page
+def admin_license_regenerate(lid):
+    """Nayi key — purani foran invalid. Key kho jaye ya leak ho jaye to."""
+    if not _check_csrf():
+        return redirect(url_for("admin_home", msg="CSRF fail"))
+    db = get_db()
+    lic = db.execute("SELECT id FROM licenses WHERE id = ?", (lid,)).fetchone()
+    if not lic:
+        return redirect(url_for("admin_home", msg="License not found"))
+    key = new_key()
+    db.execute("UPDATE licenses SET key_hash = ?, key_prefix = ? WHERE id = ?",
+               (key_hash(key), key[:7], lid))
+    db.commit()
+    return redirect(url_for("admin_home", new_key=key,
+                            msg="Nayi key ban gayi — PURANI key ab kaam nahi karegi. Copy kar lo!"))
+
+
 @app.post("/admin/licenses/<int:lid>/delete")
 @admin_required_page
 def admin_license_delete(lid):
