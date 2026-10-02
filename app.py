@@ -301,6 +301,58 @@ def _asset_path(name):
     base = getattr(_s, "_MEIPASS", None) or app_dir()
     return os.path.join(base, "assets", name)
 
+# ---- single instance (tray ke sath lazmi: X -> tray, dobara shortcut = purani window) ----
+_SINGLETON_PORT = 4417  # 4416 = POT server, 5000 = Flask dashboard
+_singleton_sock = None  # zinda rakho: process khatam -> OS khud port free karega
+
+def _singleton_accept_loop(srv, win_holder):
+    """Pehli instance: doosri copy ke SHOW signal par window wapas lao."""
+    while True:
+        try:
+            conn, _ = srv.accept()
+        except OSError:
+            return
+        try:
+            if b"SHOW" in conn.recv(16):
+                w = win_holder.get("win")
+                if w is not None:
+                    for fn in ("show", "restore"):
+                        try:
+                            getattr(w, fn)()
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+def _ensure_single_instance(win_holder):
+    """True  -> ye pehli instance hai (lock lag gaya, listener chal raha).
+    False -> pehle se chal rahi hai (usay SHOW bhej diya) — ab exit karo."""
+    import socket
+    srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        srv.bind(("127.0.0.1", _SINGLETON_PORT))
+    except OSError:
+        srv.close()
+        try:
+            c = socket.create_connection(("127.0.0.1", _SINGLETON_PORT), timeout=3)
+            c.sendall(b"SHOW")
+            c.close()
+        except Exception:
+            pass
+        return False
+    srv.listen(5)
+    global _singleton_sock
+    _singleton_sock = srv
+    threading.Thread(target=_singleton_accept_loop, args=(srv, win_holder),
+                     daemon=True).start()
+    return True
+
 def _setup_tray(win):
     """X dabane par window band karne ki bajaye tray me chhupao.
     Tray menu: Open CreatorWatch / Exit. Returns True agar tray lag gaya."""
@@ -1029,6 +1081,11 @@ def start_scheduler():
 if __name__ == "__main__":
     import sys as _sys
 
+    _win_holder = {}  # desktop window yahan rakho taake SHOW signal par restore ho
+    if not _ensure_single_instance(_win_holder):
+        print("CreatorWatch pehle se chal rahi hai — purani window khol di.", flush=True)
+        _sys.exit(0)
+
     class Api:
         def pick_folder(self):
             """Native explorer dialog (desktop window only). Returns path ya ''."""
@@ -1066,6 +1123,7 @@ if __name__ == "__main__":
             try:
                 win = webview.create_window(f"CreatorWatch v{VERSION}", "http://127.0.0.1:5000",
                                       width=1200, height=800, min_size=(360, 640), js_api=Api())
+                _win_holder["win"] = win  # singleton SHOW signal isi ko restore karega
                 _setup_tray(win)  # X -> tray; fail ho to purana behavior (X = band)
                 webview.start()
                 os._exit(0)
