@@ -34,6 +34,17 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 <p class="tip">{{ t('s_sub') }}</p>
 {% if msg %}<div class="msg">{{ msg }}</div>{% endif %}
 <div class="card">
+<h2 style="font-size:15px;margin:0 0 4px">🔑 License</h2>
+{% if lic.key %}
+<p class="tip">Plan: <b>{{ lic.plan or 'pro' }}</b> · {{ lic.email }}{% if lic.expires_at %} · expires {{ lic.expires_at[:10] }}{% endif %}</p>
+<form method="post" action="/deactivate" onsubmit="return confirm('License deactivate karni hai? Dobara key dalni paregi.')">
+<button type="submit" style="background:#e5484d;color:#fff">Deactivate license</button>
+</form>
+{% else %}
+<p class="tip">Koi license active nahi. <a href="/activate">Activate karo</a></p>
+{% endif %}
+</div>
+<div class="card">
 <h2 style="font-size:15px;margin:0 0 4px">📁 Save location</h2>
 <p class="tip">Downloads kahan save hon. Khali = default folder. Drive full ho to yahan dosri drive/folder set karo (e.g. D:\Videos).{% if free_gb is not none %} Abhi is drive me <b>{{ free_gb }} GB free</b> / {{ total_gb }} GB total.{% endif %}</p>
 <form method="post">

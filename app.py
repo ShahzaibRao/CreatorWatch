@@ -16,6 +16,7 @@ if is_frozen():
         pass
 ensure_pylibs()  # exe: updated engines (tools/pylibs) bundled se pehle load hon
 import database as db
+import license_client as lic  # M2: license gate (cloud branch only)
 from translations import LANGS, text as _text
 from downloader import detect_platform, prospect_folder, check_profile, check_all_profiles, check_due_profiles, first_run
 
@@ -38,6 +39,18 @@ def T(key):
 @app.before_request
 def _set_lang():
     g.lang = _lang()
+
+@app.before_request
+def _license_gate():
+    # M2: license gate (cloud branch only). Bina valid key ke sab kuch
+    # /activate par redirect — sirf activation, language aur static khule hain.
+    p = request.path
+    if p == "/activate" or p == "/deactivate" or p.startswith("/lang/") or p.startswith("/static/"):
+        return None
+    ok, _reason = lic.is_activated(db)
+    if not ok:
+        return redirect(url_for("activate"))
+    return None
 
 @app.context_processor
 def _inject_lang():
@@ -277,6 +290,38 @@ def finish_job(pid, result):
             JOBS[pid].update({"state": "done", "result": result, "pct": 100,
                               "done": JOBS[pid].get("total", 1), "ts": time.time()})
 
+# ---- M2: license activation (cloud branch only) ----
+_ERR_UR = {
+    "server unreachable and grace period expired":
+        "Server se connect nahi ho saka aur offline limit (7 din) khatam ho gayi. Internet on karo.",
+    "unknown key": "Ye key hamare record me nahi hai.",
+    "license revoked": "Ye license revoke kar di gayi hai.",
+    "license expired": "Ye license expire ho chuki hai.",
+    "seat limit reached — deactivate another machine first":
+        "Key pehle se 2 machines par active hai. Koi purani machine deactivate karo.",
+}
+
+@app.route("/activate", methods=["GET", "POST"])
+def activate():
+    msg = ""
+    if request.method == "POST":
+        ok, info = lic.activate(db, request.form.get("key", ""))
+        if ok:
+            return redirect(url_for("dashboard"))
+        msg = info
+    else:
+        ok, reason = lic.is_activated(db)
+        if ok:
+            return redirect(url_for("dashboard"))
+        if reason not in ("no_key", "cached"):
+            msg = _ERR_UR.get(reason, reason)
+    return render_template("activate.html", msg=msg)
+
+@app.route("/deactivate", methods=["POST"])
+def deactivate_license():
+    lic.deactivate(db)
+    return redirect(url_for("activate"))
+
 @app.route("/")
 def dashboard():
     profiles = db.get_profiles()
@@ -430,7 +475,8 @@ def settings():
     yt_proxy = db.get_setting("yt_proxy", "") or ""
     return render_template("settings.html", n=max_workers(), msg=msg,
                            suggestion=None, cores=_os.cpu_count() or 4,
-                           root=root, free_gb=free_gb, total_gb=total_gb, yt_proxy=yt_proxy)
+                           root=root, free_gb=free_gb, total_gb=total_gb, yt_proxy=yt_proxy,
+                           lic=lic.cached_status(db))
 
 def suggest_workers(cores, ram_gb, speed_mbps):
     """Bottleneck = sab se choti value. 1 core system ke liye chhoro."""
