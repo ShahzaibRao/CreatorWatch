@@ -45,7 +45,8 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 .card-h h2{margin:0;font-size:15px}
 .card-h span{font-size:12.5px;color:var(--muted)}
 .card-b{padding:16px 18px}
-.fgrid{display:grid;grid-template-columns:1.1fr 2fr 110px 130px auto;gap:10px}
+.fgrid{display:grid;grid-template-columns:1fr 120px 150px;gap:10px}
+.fgrid .full{grid-column:1/-1}
 label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px;font-weight:600}
 input,select{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;outline:none}
 input:focus,select:focus{border-color:var(--accent)}
@@ -103,7 +104,6 @@ tr:last-child td{border-bottom:0}
 @media(max-width:900px){
   .stats{grid-template-columns:repeat(2,1fr)}
   .fgrid{grid-template-columns:1fr 1fr}
-  .fgrid .full{grid-column:1/-1}
 }
 @media(max-width:560px){
   .top{padding:4px 0 12px}
@@ -192,11 +192,7 @@ tr:last-child td{border-bottom:0}
       <form method="post" action="/add">
         <div class="fgrid">
           <div><label>{{ t('f_name') }}</label><input name="name" placeholder="{{ t('f_name_ph') }}" required></div>
-          <div class="full"><label>{{ t('f_link') }}</label><input name="url" placeholder="{{ t('f_link_ph') }}" required></div>
           <div><label>{{ t('f_every') }}</label><input name="interval" type="number" value="15" min="5" max="1440"></div>
-          <div class="full"><label>Save folder (default: downloads/CreatorWatch/… — Browse se drive/folder select karo)</label>
-            <div style="display:flex;gap:8px"><input id="addFolder" name="folder" placeholder="default: downloads/CreatorWatch/…" readonly><button type="button" class="btn ghost browse-btn" data-target="addFolder" style="white-space:nowrap">📁 Select</button></div>
-          </div>
           <div><label>{{ t('f_quality') }}</label>
             <select name="quality">
               <option value="720p" selected>720p</option>
@@ -205,6 +201,10 @@ tr:last-child td{border-bottom:0}
               <option value="360p">360p</option>
               <option value="best">Best</option>
             </select>
+          </div>
+          <div class="full"><label>{{ t('f_link') }}</label><input name="url" placeholder="{{ t('f_link_ph') }}" required></div>
+          <div class="full"><label>Save folder (default: downloads/CreatorWatch/… — Browse se drive/folder select karo)</label>
+            <div style="display:flex;gap:8px"><input id="addFolder" name="folder" placeholder="default: downloads/CreatorWatch/…" readonly><button type="button" class="btn ghost browse-btn" data-target="addFolder" style="white-space:nowrap">📁 Select</button></div>
           </div>
           <div><label>YT Method</label>
             <select name="method">
