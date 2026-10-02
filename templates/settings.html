@@ -36,10 +36,14 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 <div class="card">
 <h2 style="font-size:15px;margin:0 0 4px">🔑 License</h2>
 {% if lic.key %}
-<p class="tip">Plan: <b>{{ lic.plan or 'pro' }}</b> · {{ lic.email }}{% if lic.expires_at %} · expires {{ lic.expires_at[:10] }}{% endif %}</p>
+<p class="tip">Plan: <b>{{ lic.plan or 'pro' }}</b> · {{ lic.email }}{% if lic.expires_at %} · expires {{ lic.expires_at[:10] }}{% endif %}{% if lic.machines_used %} · seats {{ lic.machines_used }}/{{ lic.max_machines }}{% endif %}</p>
+<p class="tip">Key: <code id="licKey">••••••••••••••••••</code> <a href="#" id="licKeyToggle" style="font-size:12px">dikhao</a></p>
 <form method="post" action="/deactivate" onsubmit="return confirm('License deactivate karni hai? Dobara key dalni paregi.')">
 <button type="submit" style="background:#e5484d;color:#fff">Deactivate license</button>
 </form>
+<script>
+(function(){var k=document.getElementById('licKey'),b=document.getElementById('licKeyToggle'),real="{{ lic.key }}",mask="••••••••••••••••••",shown=false;b.onclick=function(e){e.preventDefault();shown=!shown;k.textContent=shown?real:mask;b.textContent=shown?'chhupao':'dikhao';};})();
+</script>
 {% else %}
 <p class="tip">Koi license active nahi. <a href="/activate">Activate karo</a></p>
 {% endif %}

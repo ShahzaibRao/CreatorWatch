@@ -70,6 +70,8 @@ def cached_status(db):
         "plan": db.get_setting("license_plan", "") or "",
         "expires_at": db.get_setting("license_expires_at", "") or "",
         "last_ok": db.get_setting("license_last_ok", "") or "",
+        "machines_used": db.get_setting("license_machines_used", "") or "",
+        "max_machines": db.get_setting("license_max_machines", "") or "",
     }
 
 
@@ -113,6 +115,8 @@ def is_activated(db):
         db.set_setting("license_email", data.get("email", ""))
         db.set_setting("license_plan", data.get("plan", ""))
         db.set_setting("license_expires_at", data.get("expires_at") or "")
+        db.set_setting("license_machines_used", data.get("machines_used", ""))
+        db.set_setting("license_max_machines", data.get("max_machines", ""))
         return True, "ok"
     if status is None:
         # Server unreachable — offline grace period.
@@ -143,6 +147,8 @@ def activate(db, key):
     db.set_setting("license_email", data.get("email", ""))
     db.set_setting("license_plan", data.get("plan", ""))
     db.set_setting("license_expires_at", data.get("expires_at") or "")
+    db.set_setting("license_machines_used", data.get("machines_used", ""))
+    db.set_setting("license_max_machines", data.get("max_machines", ""))
     return True, data
 
 
@@ -152,6 +158,7 @@ def deactivate(db):
     if key:
         _post("/api/licenses/deactivate", {"key": key, "machine_id": machine_id()})
     for k in ("license_key", "license_email", "license_plan",
-              "license_expires_at", "license_last_ok", "license_last_check"):
+              "license_expires_at", "license_last_ok", "license_last_check",
+              "license_machines_used", "license_max_machines"):
         db.set_setting(k, "")
     return True
