@@ -20,6 +20,7 @@ PrivilegesRequired=lowest
 WizardStyle=modern
 DisableProgramGroupPage=yes
 DisableDirPage=no
+SetupIconFile=..\assets\icon.ico
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

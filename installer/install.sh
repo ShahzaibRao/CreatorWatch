@@ -29,7 +29,7 @@ cat > "$HOME/.local/share/applications/creatorwatch.desktop" <<EOF
 Name=CreatorWatch
 Comment=Auto-track YouTube/TikTok/Instagram/X
 Exec=$HOME/.local/bin/creatorwatch
-Icon=video
+Icon=$APP_DIR/assets/icon.png
 Terminal=false
 Type=Application
 Categories=AudioVideo;
