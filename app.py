@@ -305,6 +305,77 @@ def _toast_done(p, new):
     except Exception as e:
         print(f"[TOAST FAIL] {e}", flush=True)
 
+# ---- Update tasks (cloud branch): Setup YouTube / Update Engines ----
+# Lambi downloads background thread me, page /api/update_status poll karti hai.
+UPD = {"state": "idle", "action": "", "stage": "", "pct": None, "detail": "", "ts": 0}
+UPD_LOCK = threading.Lock()
+
+def _upd(**kw):
+    with UPD_LOCK:
+        UPD.update(kw, ts=time.time())
+
+def _upd_progress(info):
+    # ensure_yt_stack / engines se {"title", "pct"} aata hai
+    try:
+        _upd(stage=info.get("title", "") or "", pct=info.get("pct"))
+    except Exception:
+        pass
+
+def _run_update(action):
+    try:
+        if action == "ytsetup":
+            from downloader import ensure_yt_stack
+            ok, detail = ensure_yt_stack(progress=_upd_progress)
+        elif action == "engines":
+            if is_frozen():
+                import engines
+                ok, detail = engines.update_engines(progress=_upd_progress)
+            else:
+                detail, ok = _upgrade_engines(progress=_upd_progress)  # (detail, ok) order!
+        else:
+            ok, detail = False, "unknown action"
+        _upd(state="done" if ok else "error", pct=100,
+             detail=("Ho gaya: " if ok else "Masla: ") + detail)
+    except Exception as e:
+        _upd(state="error", detail=f"Fail: {e}"[:300])
+
+@app.post("/api/update_start")
+def api_update_start():
+    data = request.get_json(silent=True) or {}
+    action = (data.get("action") or "").strip()
+    if action not in ("ytsetup", "engines"):
+        return jsonify(error="unknown action"), 400
+    with UPD_LOCK:
+        if UPD.get("state") == "running":
+            return jsonify(dict(UPD))
+        UPD.update(state="running", action=action, stage="shuru ho raha hai…",
+                   pct=None, detail="", ts=time.time())
+    threading.Thread(target=_run_update, args=(action,), daemon=True).start()
+    return jsonify({"state": "running", "action": action})
+
+@app.get("/api/update_status")
+def api_update_status():
+    with UPD_LOCK:
+        return jsonify(dict(UPD))
+
+@app.get("/api/pot_status")
+def api_pot_status():
+    try:
+        from downloader import yt_stack_status
+        return jsonify(yt_stack_status())
+    except Exception as e:
+        return jsonify({"deno": False, "potserver": False, "server_running": False,
+                        "error": str(e)[:150]})
+
+@app.post("/api/pot_start")
+def api_pot_start():
+    try:
+        from downloader import start_pot_server
+        threading.Thread(target=start_pot_server, daemon=True).start()
+        return jsonify(ok=True)
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)[:150])
+
 # ---- M2: license activation (cloud branch only) ----
 _ERR_UR = {
     "server unreachable and grace period expired":
@@ -723,9 +794,14 @@ def updates_page():
                            pending=pending, msg=msg, msg_ok=msg_ok,
                            rel_error=(rel.get("error", "") if isinstance(rel, dict) else ""))
 
-def _upgrade_engines():
+def _upgrade_engines(progress=None):
     """Source mode: pip se yt-dlp + gallery-dl upgrade (engines purane hon to site fail hoti hai)."""
     import subprocess, sys
+    if progress:
+        try:
+            progress({"title": "pip install yt-dlp gallery-dl…", "pct": None})
+        except Exception:
+            pass
     try:
         p = subprocess.run([sys.executable, "-m", "pip", "install", "-U", "yt-dlp", "gallery-dl"],
                            capture_output=True, text=True, timeout=600)
@@ -815,6 +891,19 @@ def start_scheduler():
             threading.Thread(target=start_pot_server, daemon=True).start()
     except Exception:
         pass
+    # Watcher: server mar jaye to har 60s me dobara start ki koshish
+    def _pot_watcher():
+        import time as _t
+        while True:
+            _t.sleep(60)
+            try:
+                from downloader import yt_stack_status as _st, start_pot_server as _start
+                s = _st()
+                if s.get("deno") and s.get("potserver") and not s.get("server_running"):
+                    _start()
+            except Exception:
+                pass
+    threading.Thread(target=_pot_watcher, daemon=True).start()
     return sched
 
 if __name__ == "__main__":

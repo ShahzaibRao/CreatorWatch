@@ -67,21 +67,41 @@ def latest_pypi(pkg):
     return ver, wheel_url
 
 
-def update_engines():
+def update_engines(progress=None):
     """Dono engines ke latest wheels PyPI se -> tools/pylibs. Returns (ok, report)."""
+    def _pg(title, pct=None):
+        if progress:
+            try:
+                progress({"title": title, "pct": pct})
+            except Exception:
+                pass
+
     report, ok_all = [], True
-    for pkg in ENGINES:
+    for i, pkg in enumerate(ENGINES):
         try:
+            _pg(f"{pkg}: latest version check…", 5 + i * 45)
             ver, url = latest_pypi(pkg)
             if not url:
                 report.append(f"{pkg}: wheel nahi mili")
                 ok_all = False
                 continue
+            _pg(f"{pkg} download…", 12 + i * 45)
             req = urllib.request.Request(url, headers={"User-Agent": "CreatorWatch"})
             with urllib.request.urlopen(req, timeout=600) as r:
-                blob = r.read()
+                total = int(r.headers.get("Content-Length") or 0)
+                got, chunks = 0, []
+                while True:
+                    ch = r.read(1024 * 256)
+                    if not ch:
+                        break
+                    chunks.append(ch)
+                    got += len(ch)
+                    if total:
+                        _pg(f"{pkg} download…", 12 + i * 45 + int(25 * got / total))
+                blob = b"".join(chunks)
             dest = pylibs_dir()
             # purani copy saaf karo (sirf is package ki dirs)
+            _pg(f"{pkg}: purani copy saaf…", 38 + i * 45)
             mod = pkg.replace("-", "_")
             for entry in os.listdir(dest):
                 if entry == mod or entry.startswith(mod + "-"):
@@ -93,6 +113,7 @@ def update_engines():
                             os.remove(p)
                         except OSError:
                             pass
+            _pg(f"{pkg}: install…", 42 + i * 45)
             with zipfile.ZipFile(io.BytesIO(blob)) as z:
                 z.extractall(dest)
             report.append(f"{pkg} -> {ver}")

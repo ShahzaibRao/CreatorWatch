@@ -41,6 +41,12 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 
 {% if msg %}<div class="msg {% if msg_ok %}ok{% else %}err{% endif %}">{{ msg }}</div>{% endif %}
 
+<div class="card" id="updCard" style="display:none"><div class="card-h"><h2 id="updTitle">Update</h2></div><div class="card-b">
+<div style="height:10px;background:var(--surface2);border-radius:99px;overflow:hidden"><div id="updBar" style="height:100%;width:0%;background:var(--accent);transition:width .3s"></div></div>
+<p style="margin:10px 0 0"><small id="updStage">shuru…</small></p>
+<div class="msg" id="updMsg" style="display:none;margin:12px 0 0"></div>
+</div></div>
+
 <div class="card"><div class="card-h"><h2>App version</h2></div><div class="card-b">
 <div class="kv"><span>Installed</span><b>v{{ version }}{% if frozen %} (EXE){% endif %}</b></div>
 <div class="kv"><span>Latest on GitHub</span><b>{{ latest }} {% if has_update %}<span class="pill wait">Update available</span>{% elif latest != '—' %}<span class="pill ok">Up to date</span>{% endif %}</b></div>
@@ -62,15 +68,16 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 <p><small>YouTube IP/bot block kare to PO-token se download hota hai. Ek bar install karo (~45MB), phir auto-use.</small></p>
 <div class="kv"><span>Deno</span><b>{% if ytstack.deno %}✅{% else %}❌{% endif %}</b></div>
 <div class="kv"><span>Server files</span><b>{% if ytstack.potserver %}✅{% else %}❌{% endif %}</b></div>
-<div class="kv"><span>Server running</span><b>{% if ytstack.server_running %}✅{% else %}—{% endif %}</b></div>
-<div class="row"><form method="post"><input type="hidden" name="action" value="ytsetup"><button class="btn" type="submit">⬇ Setup YouTube</button></form></div>
+<div class="kv"><span>Server running</span><b id="potCell">{% if ytstack.server_running %}✅{% else %}—{% endif %}</b></div>
+<div class="row"><form method="post" onsubmit="return startUpdate('ytsetup', this)"><input type="hidden" name="action" value="ytsetup"><button class="btn" type="submit" id="ytsetupBtn">⬇ Setup YouTube</button></form>
+<button class="btn ghost" id="potStartBtn" {% if ytstack.server_running %}style="display:none"{% endif %} onclick="startPot()">▶ Start Server</button></div>
 </div></div>
 
 <div class="card"><div class="card-h"><h2>Download engines</h2></div><div class="card-b">
 <p><small>yt-dlp / gallery-dl purane hon to sites fail hoti hain — inhe alag se update rakho taake app smoothly chalti rahe.</small></p>
 <div class="kv"><span>yt-dlp</span><b>{{ engines.get('yt-dlp','?') }}{% if external.get('yt-dlp') %} <span class="pill ok">ext {{ external.get('yt-dlp') }}</span>{% endif %}</b></div>
 <div class="kv"><span>gallery-dl</span><b>{{ engines.get('gallery-dl','?') }}{% if external.get('gallery-dl') %} <span class="pill ok">ext {{ external.get('gallery-dl') }}</span>{% endif %}</b></div>
-<div class="row"><form method="post"><input type="hidden" name="action" value="engines"><button class="btn" type="submit">{% if frozen and not external %}⬇ Install Required Packages{% else %}⬆ Update Engines{% endif %}</button></form>
+<div class="row"><form method="post" onsubmit="return startUpdate('engines', this)"><input type="hidden" name="action" value="engines"><button class="btn" type="submit">{% if frozen and not external %}⬇ Install Required Packages{% else %}⬆ Update Engines{% endif %}</button></form>
 {% if frozen and external %}
 <form method="post"><input type="hidden" name="action" value="restart_app"><button class="btn ghost" type="submit">🔁 Restart App</button></form>
 <form method="post"><input type="hidden" name="action" value="engines_reset"><button class="btn ghost" type="submit">↩ Bundled Wapas</button></form>
@@ -85,5 +92,57 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 </div>
 <script>
 (function(){var r=document.documentElement,b=document.getElementById('themeBtn');function a(t){r.setAttribute('data-theme',t);try{localStorage.setItem('pd-theme',t)}catch(e){}}var s=null;try{s=localStorage.getItem('pd-theme')}catch(e){}if(!s){s=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark'}a(s);b.onclick=function(){a(r.getAttribute('data-theme')==='light'?'dark':'light')}})();
+
+// Update progress: Setup YouTube / Update Engines background me, page poll karti hai
+var _updIv = null;
+function startUpdate(action, form){
+  var card=document.getElementById('updCard'), bar=document.getElementById('updBar'),
+      stage=document.getElementById('updStage'), msg=document.getElementById('updMsg'),
+      title=document.getElementById('updTitle');
+  title.textContent = action==='ytsetup' ? 'YouTube PO-stack setup' : 'Download engines update';
+  card.style.display='block'; msg.style.display='none';
+  bar.style.width='4%'; bar.style.opacity='1'; stage.textContent='shuru ho raha hai…';
+  card.scrollIntoView({behavior:'smooth',block:'nearest'});
+  Array.prototype.forEach.call(card.parentNode.querySelectorAll('button[type=submit]'),function(b){b.disabled=true;});
+  fetch('/api/update_start',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:action})})
+  .then(function(r){return r.json();})
+  .then(function(){
+    if(_updIv) clearInterval(_updIv);
+    _updIv=setInterval(function(){
+      fetch('/api/update_status').then(function(r){return r.json();}).then(function(s){
+        stage.textContent=s.stage||'…';
+        if(s.pct!=null){bar.style.width=s.pct+'%';bar.style.opacity='1';}
+        else{bar.style.width='100%';bar.style.opacity='.45';}
+        if(s.state==='done'||s.state==='error'){
+          clearInterval(_updIv);_updIv=null;
+          bar.style.opacity='1';bar.style.width='100%';
+          msg.style.display='block';
+          msg.className='msg '+(s.state==='done'?'ok':'err');
+          msg.textContent=s.detail||'';
+          setTimeout(function(){location.reload();},2200);
+        }
+      });
+    },1000);
+  })
+  .catch(function(){ form.submit(); });  // JS fail -> purana normal POST
+  return false;
+}
+
+// POT server live status: har 4s me refresh, band ho to Start button
+function potTick(){
+  fetch('/api/pot_status').then(function(r){return r.json();}).then(function(s){
+    var cell=document.getElementById('potCell'), btn=document.getElementById('potStartBtn');
+    if(!cell) return;
+    cell.textContent=s.server_running?'✅':'—';
+    if(btn) btn.style.display=s.server_running?'none':'';
+  }).catch(function(){});
+}
+function startPot(){
+  var btn=document.getElementById('potStartBtn');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Starting…';}
+  fetch('/api/pot_start',{method:'POST'}).then(function(){setTimeout(potTick,3000);});
+}
+setInterval(potTick,4000);
 </script>
 </body></html>

@@ -163,7 +163,11 @@ def start_pot_server():
     if not d or not main or not os.path.exists(main):
         return False
     try:
-        kw = dict(cwd=pdir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        logf = open(os.path.join(pdir, "server.log"), "a")
+    except Exception:
+        logf = subprocess.DEVNULL
+    try:
+        kw = dict(cwd=pdir, stdout=logf, stderr=subprocess.STDOUT)
         if os.name == "nt":
             kw["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
         subprocess.Popen([d, "run", "--allow-all", "src/main.ts", "--port", str(POT_PORT)], **kw)
@@ -198,21 +202,47 @@ def yt_stack_status():
     return {"deno": bool(d), "potserver": bool(pdir),
             "server_running": pot_running() if (d and pdir) else False}
 
+def _dl(url, progress, title, pct0, pct1, timeout=900):
+    """Download with progress callbacks {"title", "pct"}. Returns bytes."""
+    import urllib.request
+    req = urllib.request.Request(url, headers={"User-Agent": "CreatorWatch"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        total = int(r.headers.get("Content-Length") or 0)
+        got, chunks = 0, []
+        while True:
+            ch = r.read(1024 * 256)
+            if not ch:
+                break
+            chunks.append(ch)
+            got += len(ch)
+            if progress and total:
+                try:
+                    progress({"title": title,
+                              "pct": int(pct0 + (pct1 - pct0) * got / total)})
+                except Exception:
+                    pass
+    return b"".join(chunks)
+
+
 def ensure_yt_stack(progress=None):
     """Deno (~40MB ek bar) + POT server source download -> tools/. Returns (ok, report)."""
-    import urllib.request
     import zipfile
     import io as _io
+
+    def _pg(title, pct=None):
+        if progress:
+            try:
+                progress({"title": title, "pct": pct})
+            except Exception:
+                pass
+
     notes = []
     dd = os.path.join(BASE_DIR, "tools", "deno")
     dexe = os.path.join(dd, "deno.exe")
     if not os.path.exists(dexe):
-        if progress:
-            progress({"title": "Deno download (40MB)..."})
         try:
-            req = urllib.request.Request(DENO_URL, headers={"User-Agent": "CreatorWatch"})
-            with urllib.request.urlopen(req, timeout=900) as r:
-                blob = r.read()
+            _pg("Deno download (~40MB)…", 0)
+            blob = _dl(DENO_URL, progress, "Deno download (~40MB)…", 0, 45)
             os.makedirs(dd, exist_ok=True)
             with zipfile.ZipFile(_io.BytesIO(blob)) as z:
                 z.extractall(dd)
@@ -224,23 +254,23 @@ def ensure_yt_stack(progress=None):
     pdir = os.path.join(BASE_DIR, "tools", "potserver")
     missing = [f for f in POT_FILES if not os.path.exists(os.path.join(pdir, f))]
     if missing:
-        if progress:
-            progress({"title": "POT server files..."})
         try:
-            for f in missing:
-                url = f"{POT_RAW}/{f}"
-                req = urllib.request.Request(url, headers={"User-Agent": "CreatorWatch"})
+            n = len(missing)
+            for i, f in enumerate(missing):
+                _pg(f"POT server files… ({i + 1}/{n})", 45 + int(40 * i / n))
+                data = _dl(f"{POT_RAW}/{f}", None, "", 0, 0, timeout=120)
                 dest = os.path.join(pdir, f)
                 os.makedirs(os.path.dirname(dest), exist_ok=True)
-                with urllib.request.urlopen(req, timeout=120) as r, open(dest, "wb") as fh:
-                    fh.write(r.read())
+                with open(dest, "wb") as fh:
+                    fh.write(data)
             notes.append("potserver files ok")
         except Exception as e:
             return False, f"potserver download fail: {e}"
     else:
         notes.append("potserver pehle se")
+    _pg("Server start ho raha hai…", 95)
     ok = start_pot_server()
-    notes.append("server running" if ok else "server start FAIL (deno issue?)")
+    notes.append("server running" if ok else "server start FAIL — tools/potserver/server.log dekho")
     return ok, "; ".join(notes)
 
 def _ydl_opts_flat():
