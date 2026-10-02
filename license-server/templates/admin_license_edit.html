@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Edit license — Admin{% endblock %}
+{% block content %}
+<div class="card">
+<form class="auth" method="post" action="/admin/licenses/{{ lic.id }}/edit" style="max-width:440px">
+  <h2 style="margin-bottom:6px">Edit license</h2>
+  <p class="muted" style="margin-bottom:20px"><span class="key">{{ lic.key_prefix }}-••••-••••</span> · {{ lic.email }}</p>
+  {% if error %}<div class="alert">{{ error }}</div>{% endif %}
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="field"><label>Plan</label><input name="plan" value="{{ lic.plan }}" required></div>
+  <div class="field"><label>Max machines</label><input name="max_machines" value="{{ lic.max_machines }}" inputmode="numeric" required></div>
+  <div class="field"><label>Expires <span class="muted">(khaali = lifetime)</span></label><input type="date" name="expires_at" value="{{ lic.expires_date }}"></div>
+  <div class="field"><label>Amount</label><input name="amount" value="{{ lic.amount }}" inputmode="decimal"></div>
+  <div class="field"><label>Currency</label><input name="currency" value="{{ lic.currency or 'USD' }}"></div>
+  <button class="btn" type="submit" style="width:100%">Save changes</button>
+  <p style="margin-top:14px;text-align:center"><a href="/admin">← Back to admin</a></p>
+</form>
+</div>
+{% endblock %}

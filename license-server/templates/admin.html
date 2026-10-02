@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Admin — CreatorWatch{% endblock %}
+{% block content %}
+<div class="dash-head">
+  <div><h2 style="margin-bottom:2px">Admin panel</h2><p class="muted">Users, revenue, licenses, devices</p></div>
+  <div class="spacer"><a class="btn ghost" href="/admin/logout">Admin logout</a></div>
+</div>
+
+{% if msg %}<div class="ok">{{ msg }}</div>{% endif %}
+{% if new_key %}
+<div class="ok"><b>New license key (sirf abhi dikhegi — copy kar lo):</b><br>
+<span class="key" style="font-size:16px">{{ new_key }}</span></div>
+{% endif %}
+
+<div class="grid">
+  <div class="feat"><div class="ic">👥</div><h3 style="font-size:26px">{{ stats.users }}</h3><p>Total users</p></div>
+  <div class="feat"><div class="ic">💰</div><h3 style="font-size:26px">{{ fmt_money(stats.revenue_cents) }}</h3><p>Revenue (active licenses)</p></div>
+  <div class="feat"><div class="ic">🔑</div><h3 style="font-size:26px">{{ stats.licenses }}</h3><p>Active licenses</p></div>
+  <div class="feat"><div class="ic">🖥</div><h3 style="font-size:26px">{{ stats.devices }}</h3><p>Active devices</p></div>
+</div>
+
+<div class="card" style="margin-bottom:20px">
+<h3 style="margin-bottom:14px">Create license</h3>
+<form method="post" action="/admin/licenses/create" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="field" style="margin:0"><label>User email</label><input type="email" name="email" required placeholder="user@example.com"></div>
+  <div class="field" style="margin:0"><label>Plan</label><input name="plan" value="pro"></div>
+  <div class="field" style="margin:0"><label>Machines</label><input name="max_machines" value="2" inputmode="numeric"></div>
+  <div class="field" style="margin:0"><label>Days <span class="muted">(0 = lifetime)</span></label><input name="days" value="365" inputmode="numeric"></div>
+  <div class="field" style="margin:0"><label>Amount (USD)</label><input name="amount" value="29.00" inputmode="decimal"></div>
+  <div><button class="btn" type="submit">Create</button></div>
+</form>
+</div>
+
+<div class="card" style="margin-bottom:20px">
+<h3 style="margin-bottom:14px">Licenses</h3>
+<div style="overflow-x:auto"><table>
+  <tr><th>User</th><th>Key</th><th>Plan</th><th>Machines</th><th>Expires</th><th>Amount</th><th>Status</th><th>Actions</th></tr>
+  {% for l in licenses %}
+  <tr>
+    <td>{{ l.email }}</td>
+    <td><span class="key">{{ l.key_prefix }}-••••</span></td>
+    <td>{{ l.plan }}</td>
+    <td>{{ l.machines }} / {{ l.max_machines }}</td>
+    <td>{{ l.expires_at[:10] if l.expires_at else "∞" }}</td>
+    <td>{{ fmt_money(l.amount_cents, l.currency) }}</td>
+    <td>{% if l.revoked %}<span class="badge off">Revoked</span>{% else %}<span class="badge on">Active</span>{% endif %}</td>
+    <td style="white-space:nowrap">
+      <a class="btn ghost" style="padding:6px 12px;font-size:13px" href="/admin/licenses/{{ l.id }}/edit">Edit</a>
+      <form method="post" action="/admin/licenses/{{ l.id }}/revoke" style="display:inline">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn ghost" style="padding:6px 12px;font-size:13px" type="submit">{% if l.revoked %}Unrevoke{% else %}Revoke{% endif %}</button>
+      </form>
+      <form method="post" action="/admin/licenses/{{ l.id }}/delete" style="display:inline" onsubmit="return confirm('Delete this license permanently?')">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn ghost" style="padding:6px 12px;font-size:13px;color:var(--red);border-color:var(--red)" type="submit">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="8" class="muted">No licenses yet.</td></tr>
+  {% endfor %}
+</table></div>
+</div>
+
+<div class="card" style="margin-bottom:20px">
+<h3 style="margin-bottom:14px">Active devices</h3>
+<div style="overflow-x:auto"><table>
+  <tr><th>User</th><th>Key</th><th>Machine ID</th><th>Activated</th><th>Action</th></tr>
+  {% for d in devices %}
+  <tr>
+    <td>{{ d.email }}</td>
+    <td><span class="key">{{ d.key_prefix }}-••••</span></td>
+    <td><span class="key">{{ d.machine_id[:16] }}…</span></td>
+    <td>{{ d.activated_at[:16].replace("T", " ") }}</td>
+    <td>
+      <form method="post" action="/admin/activations/deactivate" style="display:inline">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <input type="hidden" name="license_id" value="{{ d.license_id }}">
+        <input type="hidden" name="machine_id" value="{{ d.machine_id }}">
+        <button class="btn ghost" style="padding:6px 12px;font-size:13px" type="submit">Deactivate</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="5" class="muted">No active devices.</td></tr>
+  {% endfor %}
+</table></div>
+</div>
+
+<div class="card">
+<h3 style="margin-bottom:14px">Users</h3>
+<div style="overflow-x:auto"><table>
+  <tr><th>Email</th><th>Joined</th><th>Licenses</th></tr>
+  {% for u in users %}
+  <tr><td>{{ u.email }}</td><td>{{ u.created_at[:10] }}</td><td>{{ u.licenses }}</td></tr>
+  {% else %}
+  <tr><td colspan="3" class="muted">No users yet.</td></tr>
+  {% endfor %}
+</table></div>
+</div>
+{% endblock %}

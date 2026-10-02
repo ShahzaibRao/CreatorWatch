@@ -73,11 +73,20 @@ def _now():
     return datetime.now(timezone.utc).isoformat()
 
 
+_schema_ready = False
+
+
 def get_db():
+    global _schema_ready
     if "db" not in g:
         g.db = sqlite3.connect(DB_PATH)
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA foreign_keys = ON")
+    if not _schema_ready:
+        # gunicorn jese servers me __main__ nahi chalta — pehli request par schema pakka karo
+        g.db.executescript(SCHEMA)
+        _migrate_schema(g.db)
+        _schema_ready = True
     return g.db
 
 
@@ -91,8 +100,22 @@ def _close_db(_exc):
 def init_db():
     db = sqlite3.connect(DB_PATH)
     db.executescript(SCHEMA)
+    _migrate_schema(db)
     db.commit()
     db.close()
+
+
+def _migrate_schema(db):
+    """Purani DB me naye columns (M3a: revenue tracking)."""
+    cols = {r[1] for r in db.execute("PRAGMA table_info(licenses)").fetchall()}
+    for col, ddl in (("amount_cents", "ADD COLUMN amount_cents INTEGER NOT NULL DEFAULT 0"),
+                     ("currency", "ADD COLUMN currency TEXT NOT NULL DEFAULT 'USD'")):
+        if col not in cols:
+            try:
+                db.execute(f"ALTER TABLE licenses {ddl}")
+            except sqlite3.OperationalError:
+                pass  # concurrent first request ne pehle add kar diya
+    db.commit()
 
 
 def new_key():
@@ -315,33 +338,241 @@ def dashboard():
                            user=_user_with_licenses(session["uid"]))
 
 
+# ---------------- admin panel ----------------
+
+def _fmt_money(cents, currency="USD"):
+    try:
+        v = (cents or 0) / 100
+    except TypeError:
+        v = 0
+    sym = {"USD": "$", "EUR": "€", "PKR": "Rs"}.get((currency or "USD").upper(), (currency or "") + " ")
+    return f"{sym}{v:,.2f}"
+
+
+def admin_required_page(fn):
+    @wraps(fn)
+    def wrapper(*a, **k):
+        if not session.get("is_admin"):
+            return redirect(url_for("admin_login", next=request.path))
+        return fn(*a, **k)
+    return wrapper
+
+
+@app.context_processor
+def _inject_admin():
+    return {"is_admin": bool(session.get("is_admin")), "fmt_money": _fmt_money}
+
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    if session.get("is_admin"):
+        return redirect(url_for("admin_home"))
+    err = ""
+    nxt = _safe_next(request.args.get("next") or request.form.get("next", ""))
+    if request.method == "POST":
+        if not _check_csrf():
+            err = "session expired — reload and try again"
+        elif secrets.compare_digest(request.form.get("token", ""), ADMIN_TOKEN):
+            session["is_admin"] = True
+            return redirect(nxt or url_for("admin_home"))
+        else:
+            err = "wrong admin token"
+    return render_template("admin_login.html", error=err,
+                           next=request.args.get("next", ""))
+
+
+@app.get("/admin/logout")
+def admin_logout():
+    session.pop("is_admin", None)
+    return redirect(url_for("index"))
+
+
+def _admin_stats():
+    db = get_db()
+    users = db.execute("SELECT COUNT(*) c FROM users").fetchone()["c"]
+    licenses = db.execute("SELECT COUNT(*) c FROM licenses WHERE revoked = 0").fetchone()["c"]
+    devices = db.execute("SELECT COUNT(*) c FROM activations").fetchone()["c"]
+    revenue = db.execute(
+        "SELECT COALESCE(SUM(amount_cents), 0) s FROM licenses WHERE revoked = 0").fetchone()["s"]
+    return {"users": users, "licenses": licenses, "devices": devices,
+            "revenue_cents": revenue}
+
+
+@app.get("/admin")
+@admin_required_page
+def admin_home():
+    db = get_db()
+    licenses = db.execute(
+        "SELECT l.id, l.key_prefix, l.plan, l.max_machines, l.expires_at, l.revoked,"
+        " l.amount_cents, l.currency, l.created_at, u.email,"
+        " (SELECT COUNT(*) FROM activations a WHERE a.license_id = l.id) AS machines"
+        " FROM licenses l JOIN users u ON u.id = l.user_id"
+        " ORDER BY l.id DESC").fetchall()
+    users = db.execute(
+        "SELECT u.id, u.email, u.created_at,"
+        " (SELECT COUNT(*) FROM licenses l WHERE l.user_id = u.id) AS licenses"
+        " FROM users u ORDER BY u.id DESC").fetchall()
+    devices = db.execute(
+        "SELECT a.license_id, a.machine_id, a.activated_at, l.key_prefix, u.email"
+        " FROM activations a JOIN licenses l ON l.id = a.license_id"
+        " JOIN users u ON u.id = l.user_id"
+        " ORDER BY a.activated_at DESC LIMIT 200").fetchall()
+    return render_template("admin.html", stats=_admin_stats(),
+                           licenses=[dict(r) for r in licenses],
+                           users=[dict(r) for r in users],
+                           devices=[dict(r) for r in devices],
+                           new_key=request.args.get("new_key", ""),
+                           msg=request.args.get("msg", ""))
+
+
+def _dollars_to_cents(s):
+    try:
+        return int(round(float(s or 0) * 100))
+    except (TypeError, ValueError):
+        return 0
+
+
+@app.post("/admin/licenses/create")
+@admin_required_page
+def admin_license_create():
+    if not _check_csrf():
+        return redirect(url_for("admin_home", msg="CSRF fail"))
+    days = request.form.get("days", "").strip()
+    lic, err = _do_create_license(
+        request.form.get("email", ""), request.form.get("plan", "pro"),
+        request.form.get("max_machines", 2), int(days) if days else 0,
+        _dollars_to_cents(request.form.get("amount", "0")),
+        request.form.get("currency", "USD"))
+    if err:
+        return redirect(url_for("admin_home", msg="Error: " + err))
+    # Full key sirf abhi dikhao — DB me sirf hash hai, dobara nahi milegi!
+    return redirect(url_for("admin_home", new_key=lic["key"],
+                            msg="License created for " + request.form.get("email", "")))
+
+
+@app.post("/admin/licenses/<int:lid>/revoke")
+@admin_required_page
+def admin_license_revoke(lid):
+    if not _check_csrf():
+        return redirect(url_for("admin_home", msg="CSRF fail"))
+    db = get_db()
+    db.execute("UPDATE licenses SET revoked = 1 - revoked WHERE id = ?", (lid,))
+    db.commit()
+    return redirect(url_for("admin_home", msg="License updated"))
+
+
+@app.post("/admin/licenses/<int:lid>/delete")
+@admin_required_page
+def admin_license_delete(lid):
+    if not _check_csrf():
+        return redirect(url_for("admin_home", msg="CSRF fail"))
+    db = get_db()
+    db.execute("DELETE FROM activations WHERE license_id = ?", (lid,))
+    db.execute("DELETE FROM licenses WHERE id = ?", (lid,))
+    db.commit()
+    return redirect(url_for("admin_home", msg="License deleted"))
+
+
+@app.route("/admin/licenses/<int:lid>/edit", methods=["GET", "POST"])
+@admin_required_page
+def admin_license_edit(lid):
+    db = get_db()
+    lic = db.execute(
+        "SELECT l.*, u.email FROM licenses l JOIN users u ON u.id = l.user_id"
+        " WHERE l.id = ?", (lid,)).fetchone()
+    if not lic:
+        return redirect(url_for("admin_home", msg="License not found"))
+    err = ""
+    if request.method == "POST":
+        if not _check_csrf():
+            err = "session expired — reload and try again"
+        else:
+            exp = (request.form.get("expires_at") or "").strip()
+            expires_at = None
+            if exp:
+                try:
+                    expires_at = datetime.fromisoformat(exp).replace(
+                        tzinfo=timezone.utc).isoformat()
+                except ValueError:
+                    err = "expiry date format ghalat hai (YYYY-MM-DD)"
+            if not err:
+                try:
+                    max_m = int(request.form.get("max_machines", 2))
+                except (TypeError, ValueError):
+                    err = "max machines number hona chahiye"
+            if not err:
+                db.execute(
+                    "UPDATE licenses SET plan = ?, max_machines = ?, expires_at = ?,"
+                    " amount_cents = ?, currency = ? WHERE id = ?",
+                    (request.form.get("plan", "pro").strip() or "pro", max_m,
+                     expires_at, _dollars_to_cents(request.form.get("amount", "0")),
+                     (request.form.get("currency", "USD") or "USD").upper(), lid))
+                db.commit()
+                return redirect(url_for("admin_home", msg="License updated"))
+    lic = dict(lic)
+    lic["expires_date"] = (lic["expires_at"] or "")[:10]
+    lic["amount"] = "%.2f" % ((lic["amount_cents"] or 0) / 100)
+    return render_template("admin_license_edit.html", lic=lic, error=err)
+
+
+@app.post("/admin/activations/deactivate")
+@admin_required_page
+def admin_device_deactivate():
+    if not _check_csrf():
+        return redirect(url_for("admin_home", msg="CSRF fail"))
+    db = get_db()
+    db.execute("DELETE FROM activations WHERE license_id = ? AND machine_id = ?",
+               (request.form.get("license_id"), request.form.get("machine_id")))
+    db.commit()
+    return redirect(url_for("admin_home", msg="Device deactivated — seat free"))
+
+
 # ---------------- licenses (admin) ----------------
+
+def _do_create_license(email, plan="pro", max_machines=2, days=365,
+                       amount_cents=0, currency="USD"):
+    """Returns (key_dict, error). Full key sirf ek dafa return hoti hai."""
+    email = (email or "").strip().lower()
+    if not _valid_email(email):
+        return None, "valid email required"
+    try:
+        max_machines = int(max_machines)
+    except (TypeError, ValueError):
+        return None, "max_machines must be a number"
+    db = get_db()
+    user = db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+    if not user:
+        return None, "user not found (signup first)"
+    key = new_key()
+    expires_at = None
+    if days:
+        try:
+            expires_at = (datetime.now(timezone.utc) + timedelta(days=int(days))).isoformat()
+        except (TypeError, ValueError):
+            return None, "days must be a number"
+    cur = db.execute(
+        "INSERT INTO licenses(user_id, key_hash, key_prefix, plan, max_machines,"
+        " expires_at, amount_cents, currency, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+        (user["id"], key_hash(key), key[:7], plan, max_machines, expires_at,
+         int(amount_cents or 0), (currency or "USD").upper(), _now()))
+    db.commit()
+    return {"license_id": cur.lastrowid, "key": key, "plan": plan,
+            "max_machines": max_machines, "expires_at": expires_at}, None
+
 
 @app.post("/api/admin/licenses")
 @require_admin
 def create_license():
     """Create a license key for a user. M1: manual/admin. M3: Binance Pay webhook."""
     data = request.get_json(force=True, silent=True) or {}
-    email = (data.get("email") or "").strip().lower()
-    plan = (data.get("plan") or "pro").strip()
-    max_machines = int(data.get("max_machines", 2))
-    days = data.get("days", 365)  # 0/None -> lifetime
-    db = get_db()
-    user = db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
-    if not user:
-        return jsonify(error="user not found (signup first)"), 404
-    key = new_key()
-    expires_at = None
-    if days:
-        expires_at = (datetime.now(timezone.utc) + timedelta(days=int(days))).isoformat()
-    cur = db.execute(
-        "INSERT INTO licenses(user_id, key_hash, key_prefix, plan, max_machines,"
-        " expires_at, created_at) VALUES (?,?,?,?,?,?,?)",
-        (user["id"], key_hash(key), key[:7], plan, max_machines, expires_at, _now()))
-    db.commit()
+    lic, err = _do_create_license(data.get("email"), data.get("plan", "pro"),
+                                  data.get("max_machines", 2), data.get("days", 365),
+                                  data.get("amount_cents", 0), data.get("currency", "USD"))
+    if err:
+        code = 404 if err == "user not found (signup first)" else 400
+        return jsonify(error=err), code
     # Full key is returned ONCE here — only its hash is stored.
-    return jsonify(license_id=cur.lastrowid, key=key, plan=plan,
-                   max_machines=max_machines, expires_at=expires_at), 201
+    return jsonify(lic), 201
 
 
 # ---------------- validation (called by the desktop app) ----------------

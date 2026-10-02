@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Admin login — CreatorWatch{% endblock %}
+{% block content %}
+<div class="card">
+<form class="auth" method="post" action="/admin/login">
+  <h2 style="margin-bottom:6px">Admin access</h2>
+  <p class="muted" style="margin-bottom:20px">Enter your <span class="key">LICENSE_ADMIN_TOKEN</span>.</p>
+  {% if error %}<div class="alert">{{ error }}</div>{% endif %}
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+  <div class="field"><label>Admin token</label><input type="password" name="token" required placeholder="••••••••"></div>
+  <button class="btn" type="submit" style="width:100%">Enter admin panel</button>
+</form>
+</div>
+{% endblock %}

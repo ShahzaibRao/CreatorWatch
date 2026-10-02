@@ -65,6 +65,9 @@ footer{border-top:1px solid var(--line);padding:22px 0;color:var(--muted);font-s
 <nav><div class="wrap">
   <a class="brand" href="/"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg></span>CreatorWatch</a>
   <div class="navlinks">
+    {% if is_admin %}
+      <a class="btn ghost" href="/admin">Admin</a>
+    {% endif %}
     {% if user %}
       <a class="btn ghost" href="/dashboard">Dashboard</a>
       <a class="btn ghost" href="/logout">Logout</a>

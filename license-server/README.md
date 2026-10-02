@@ -1,7 +1,8 @@
-# CreatorWatch License Server — M1
+# CreatorWatch License Server — M1 + M3a
 
-Tiny cloud service for accounts + license keys. The desktop app stays
-100% local; on startup it will call `POST /api/licenses/validate`
+Tiny cloud service for accounts + license keys, with a public website
+(landing, signup/login, dashboard) and an admin panel. The desktop app
+stays 100% local; on startup it calls `POST /api/licenses/validate`
 (M2: login gate in the app).
 
 ## Dev run
@@ -12,16 +13,31 @@ pip install -r requirements.txt
 python app.py        # http://127.0.0.1:5001
 ```
 
+Open in browser:
+- `/` — landing page (this is what `cw.raoshahzaib.site` will serve)
+- `/signup`, `/login`, `/dashboard` — user accounts & licenses
+- `/admin` — admin panel (token = `LICENSE_ADMIN_TOKEN`)
+
+## Admin panel
+
+Login at `/admin/login` with your `LICENSE_ADMIN_TOKEN`. You get:
+- **Stats:** total users, revenue (active licenses), active licenses, active devices
+- **Licenses:** create (email, plan, machines, days, amount), edit, revoke/unrevoke, delete
+  — the full key is shown **once** on creation, copy it then
+- **Devices:** see every activated machine, deactivate to free a seat
+- **Users:** list with license counts
+
 ## Endpoints
 
 | Method | Path | Auth | What |
 |---|---|---|---|
-| GET | `/` | — | service info |
+| GET | `/` | — | landing page (HTML) |
+| GET | `/api/health` | — | service info (JSON) |
 | POST | `/api/signup` | — | `{email, password}` → creates account, logs in |
 | POST | `/api/login` | — | `{email, password}` → session |
 | POST | `/api/logout` | — | clears session |
 | GET | `/api/me` | session | account + licenses (key prefix only) |
-| POST | `/api/admin/licenses` | `X-Admin-Token` | `{email, plan, max_machines, days}` → full key (**returned once**) |
+| POST | `/api/admin/licenses` | `X-Admin-Token` | `{email, plan, max_machines, days, amount_cents}` → full key (**returned once**) |
 | POST | `/api/licenses/validate` | — | `{key, machine_id}` → `{valid, plan, expires_at, machines_used}` |
 | POST | `/api/licenses/deactivate` | — | `{key, machine_id}` → frees a seat |
 
