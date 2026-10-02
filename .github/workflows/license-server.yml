@@ -75,6 +75,12 @@ jobs:
   hub-description:
     # Docker Hub repo page (overview) khud DOCKERHUB.md se sync hoti hai —
     # jese nginx waghera ki hoti hai.
+    #
+    # NOTE: peter-evans/dockerhub-description use NAHI kiya — wo legacy
+    # /v2/repositories/{ns}/{repo}/ route par PATCH karta hai, jo access
+    # token se bane JWT ko hamesha "Error: Forbidden" deta hai (token kitna
+    # bhi scoped ho). Neeche wala namespace route wahi token qabool karta
+    # hai jo image push ke liye use hota hai — koi naya secret nahi chahiye.
     runs-on: ubuntu-latest
     needs: build-push
     steps:
@@ -86,11 +92,33 @@ jobs:
           sed "s|<dockerhub-username>|${{ secrets.DOCKERHUB_USERNAME }}|g" \
             license-server/DOCKERHUB.md > /tmp/DOCKERHUB.md
 
-      - name: Update Docker Hub description
-        uses: peter-evans/dockerhub-description@v4
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: ${{ secrets.DOCKERHUB_USERNAME }}/creatorwatch-license
-          readme-filepath: /tmp/DOCKERHUB.md
-          short-description: "Accounts + license-key server for the CreatorWatch desktop app"
+      - name: Sync Docker Hub description
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          SHORT_DESCRIPTION: "Accounts + license-key server for the CreatorWatch desktop app"
+          IMAGE: creatorwatch-license
+        run: |
+          set -euo pipefail
+          jwt=$(curl -sS -X POST https://hub.docker.com/v2/auth/token \
+            -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg u "$DOCKERHUB_USERNAME" --arg p "$DOCKERHUB_TOKEN" \
+              '{identifier:$u, secret:$p}')" | jq -r '.access_token // empty')
+          if [ -z "$jwt" ]; then
+            echo "::error::Could not obtain a Docker Hub token for $DOCKERHUB_USERNAME"
+            exit 1
+          fi
+          payload=$(jq -n --arg d "$SHORT_DESCRIPTION" --rawfile f /tmp/DOCKERHUB.md \
+            '{description:$d, full_description:$f}')
+          code=$(curl -sS -o /tmp/dh.json -w '%{http_code}' -X PATCH \
+            -H "Authorization: Bearer $jwt" \
+            -H 'Content-Type: application/json' \
+            -d "$payload" \
+            "https://hub.docker.com/v2/namespaces/$DOCKERHUB_USERNAME/repositories/$IMAGE")
+          echo "HTTP $code"
+          cat /tmp/dh.json
+          echo
+          case "$code" in
+            2*) echo "Docker Hub description updated." ;;
+            *) echo "::error::Docker Hub refused the description update (HTTP $code)"; exit 1 ;;
+          esac
