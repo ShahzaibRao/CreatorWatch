@@ -1,6 +1,6 @@
 import os
 import re
-from paths import app_dir, ensure_pylibs
+from paths import app_dir, ensure_pylibs, user_data_dir
 ensure_pylibs()
 from database import video_exists, add_video, update_last_check
 
@@ -12,8 +12,9 @@ def _yt_dlp():
     except ImportError:
         raise Exception("yt-dlp installed nahi — Updates page par 'Install Required Packages' dabao")
 
-BASE_DIR = app_dir()
-DOWNLOADS_ROOT = os.path.join(BASE_DIR, "downloads")
+BASE_DIR = app_dir()          # program/tools: install folder (EXE ke sath rehte hain)
+DATA_DIR = user_data_dir()  # user data: %APPDATA%/CreatorWatch (uninstall-safe)
+DOWNLOADS_ROOT = os.path.join(DATA_DIR, "downloads")
 
 def detect_platform(url: str) -> str:
     u = url.lower()
@@ -69,7 +70,7 @@ def prospect_folder(name: str, platform: str, custom: str = "") -> str:
     try:
         os.makedirs(base, exist_ok=True)
     except Exception:
-        base = os.path.join(BASE_DIR, "downloads")
+        base = os.path.join(DATA_DIR, "downloads")
         os.makedirs(base, exist_ok=True)
     folder = os.path.join(base, platform, sanitize(name))
     os.makedirs(folder, exist_ok=True)
@@ -131,7 +132,7 @@ def _yt_proxy():
 def _yt_opts(pot=False):
     """YouTube opts: cookies + JS runtime + (pot: PO token + EJS solver) + proxy."""
     o = {"js_runtimes": _js_runtimes(prefer_deno=pot)}
-    ck = os.path.join(BASE_DIR, "cookies.txt")
+    ck = os.path.join(DATA_DIR, "cookies.txt")
     if os.path.exists(ck):
         o["cookiefile"] = ck
     px = _yt_proxy()
@@ -542,7 +543,7 @@ def _gdl(args, timeout=300):
 
 def ig_fetch(profile_url: str, limit: int = 10):
     """Instagram listing gallery-dl se (yt-dlp ka insta extractor broken hai)."""
-    ck = os.path.join(BASE_DIR, "cookies.txt")
+    ck = os.path.join(DATA_DIR, "cookies.txt")
     if not os.path.exists(ck):
         raise Exception("Instagram ke liye login chahiye — /cookies page par cookies import karo")
     p = _gdl(["--cookies", ck, "--range", f"1-{limit * 2}", "--no-mtime",
@@ -569,7 +570,7 @@ def ig_fetch(profile_url: str, limit: int = 10):
 
 def tw_fetch(profile_url: str, limit: int = 10):
     """X/Twitter listing gallery-dl se (is yt-dlp version me x.com support nahi)."""
-    ck = os.path.join(BASE_DIR, "cookies.txt")
+    ck = os.path.join(DATA_DIR, "cookies.txt")
     if not os.path.exists(ck):
         raise Exception("X (Twitter) ke liye login chahiye — /cookies page par x.com cookies import karo")
     url = normalize_profile_url(profile_url)
@@ -600,7 +601,7 @@ def tw_fetch(profile_url: str, limit: int = 10):
 def ig_download(post_url: str, folder: str, progress=None):
     """Instagram/X post download gallery-dl se. Returns (filepath, title)."""
     import glob
-    ck = os.path.join(BASE_DIR, "cookies.txt")
+    ck = os.path.join(DATA_DIR, "cookies.txt")
     os.makedirs(folder, exist_ok=True)
     if progress:
         progress({"pct": None, "title": "gallery-dl download..."})
@@ -687,7 +688,7 @@ LOGIN_HINT = " (Login/cookies required: /cookies page par cookies import karo)"
 
 def _friendly_error(profile: dict, err: str) -> str:
     plat = (profile.get("platform") or "").lower()
-    if plat in ("instagram", "twitter") and not os.path.exists(os.path.join(BASE_DIR, "cookies.txt")):
+    if plat in ("instagram", "twitter") and not os.path.exists(os.path.join(DATA_DIR, "cookies.txt")):
         return err[:250] + LOGIN_HINT
     return err[:300]
 

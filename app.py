@@ -5,12 +5,12 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from flask import Flask, render_template, request, redirect, url_for, jsonify, g
 from apscheduler.schedulers.background import BackgroundScheduler
-from paths import app_dir, is_frozen, ensure_pylibs
+from paths import app_dir, is_frozen, ensure_pylibs, user_data_dir
 
 if is_frozen():
     # windowed exe (no console): prints -> server.log, warna crash hota hai
     try:
-        _log = open(os.path.join(app_dir(), "server.log"), "a", encoding="utf-8", errors="ignore")
+        _log = open(os.path.join(user_data_dir(), "server.log"), "a", encoding="utf-8", errors="ignore")
         sys.stdout = sys.stderr = _log
     except Exception:
         pass
@@ -74,7 +74,7 @@ RUNNING_LOCK = threading.Lock()
 def max_workers():
     return db.get_max_workers()
 
-COOKIES_PATH = os.path.join(app_dir(), "cookies.txt")
+COOKIES_PATH = os.path.join(user_data_dir(), "cookies.txt")
 
 TEST_URLS = {
     "instagram": "https://www.instagram.com/instagram/",
@@ -805,7 +805,7 @@ def cookies_delete():
 def api_metrics():
     return jsonify(db.get_metrics())
 
-LOG_PATH = os.path.join(app_dir(), "server.log")
+LOG_PATH = os.path.join(user_data_dir(), "server.log")
 
 def pot_log_path():
     """Deno POT server ka log — "" agar pot dir nahi."""
