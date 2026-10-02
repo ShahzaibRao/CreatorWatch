@@ -1,4 +1,4 @@
-# 📥 CreatorWatch — v0.1.0
+# 📥 CreatorWatch
 
 🌐 Language: **English** · [Roman Urdu](README.ur.md) · [Español](README.es.md) · [中文](README.zh.md)
 
@@ -6,41 +6,100 @@ Auto-track YouTube, TikTok, Instagram and X (Twitter) channels/profiles.
 Add a link → a prospect folder is created → **only the latest video** downloads →
 then only **new uploads** are downloaded on every interval.
 
+## Two parts
+
+| Part | What it does | Where it runs |
+|---|---|---|
+| **Desktop app** | Dashboard, scheduler, downloads, local SQLite DB | Your PC (Windows EXE / Linux / Python source) |
+| **License server** | Accounts, license keys, web UI, admin panel | Cloud — `cw.raoshahzaib.site` (see `license-server/`) |
+
+The desktop app stays 100% local — downloads, database and scheduler never
+leave your machine. The cloud part only handles accounts + licenses.
+
 ---
 
-## Install options (2 ways)
-1. **Source:** clone this repo → follow Setup below → web mode at http://127.0.0.1:5000 (`pip install -r requirements.txt` installs everything).
-2. **EXE (easy):** download `CreatorWatch.exe` from [Releases](https://github.com/ShahzaibRao/CreatorWatch/releases) → double-click → the same interface opens in your browser automatically. No Python needed. Updates come from inside the app (⬆ Updates page).
-3. **Linux:** `installer/install.sh [path]` (default `~/.local/share/creatorwatch`) → `creatorwatch` command + app menu entry. Needs python3-venv; for desktop window also webkit (`python3-gi gir1.2-webkit2-4.1`), else browser mode.
+## Install / Run — Desktop app
 
-## 1. Setup (first time)
+### Option A — Windows installer (easy)
+Download `CreatorWatch-Setup-X.Y.Z.exe` from
+[Releases](https://github.com/ShahzaibRao/CreatorWatch/releases) → install →
+double-click the desktop icon. No Python needed.
+
+- Closing the window (X) keeps it running in the **system tray** (right-click → Open / Exit).
+- Opening it again while it's running brings back the same window (single instance).
+- Updates from inside the app (⬆ Updates page).
+
+### Option B — Python source
 
 ```bash
-cd downloader
+git clone https://github.com/ShahzaibRao/CreatorWatch
+cd CreatorWatch
 python -m venv venv
 
 # Windows:
 venv\Scripts\activate
-# Git-Bash / Linux / Mac:
+# Linux / Mac:
 source venv/bin/activate
 
 pip install -r requirements.txt
-python app.py
+python app.py            # browser mode → http://127.0.0.1:5000
+python app.py --app      # desktop window mode
 ```
-
-Then open: **http://127.0.0.1:5000**
 
 > No need to install `ffmpeg` separately — it ships bundled via `imageio-ffmpeg`.
 
+### Option C — Linux
+`installer/install.sh [path]` (default `~/.local/share/creatorwatch`) →
+`creatorwatch` command + app menu entry. Needs python3-venv; for the desktop
+window also webkit (`python3-gi gir1.2-webkit2-4.1`), else browser mode.
+
+**User data location:** `%APPDATA%\CreatorWatch` on Windows
+(`~/.config/creatorwatch` on Linux) — database, cookies and logs live there,
+safe across uninstall/reinstall. Downloads default to `~/Downloads/CreatorWatch`.
+
 ---
 
-## 2. Adding a prospect (channel)
+## License server — run it
+
+The server behind `cw.raoshahzaib.site`: landing page, signup/login,
+user dashboard (licenses), admin panel (users, revenue, devices).
+
+```bash
+cd license-server
+```
+
+| Method | Command |
+|---|---|
+| Python | `pip install -r requirements.txt && python app.py` → http://127.0.0.1:5001 |
+| Docker | `docker build -t creatorwatch-license .` then `docker run -d -p 5001:5001 -e LICENSE_ADMIN_TOKEN=xxx -v licdata:/data creatorwatch-license` |
+| Docker Compose | `docker compose up -d` (set the 3 secrets first — see `license-server/README.md`) |
+
+Admin panel: `http://127.0.0.1:5001/admin` (token = `LICENSE_ADMIN_TOKEN`).
+Full docs: [`license-server/README.md`](license-server/README.md).
+
+---
+
+## What's in the `cloud` branch
+
+- **License-key SaaS:** Flask license server (M1) + desktop license gate (M2) —
+  key validation, per-machine seats, offline grace.
+- **Web UI (M3a):** landing, signup/login, user dashboard, **admin panel**
+  (users, revenue, active devices; create/edit/revoke/delete licenses;
+  deactivate devices; user key reveal + copy).
+- **Desktop polish:** custom app icon, system tray (X → background), single
+  instance, icon-as-logo + favicon, header alignment fixes.
+- **Download-complete OS notifications** (Windows toast with click-to-open).
+- **YouTube POT auto-heal** (local Deno PO-token server).
+
+---
+
+## 1. Adding a prospect (channel)
 
 The **Add prospect** form on the dashboard:
 
 | Field | Meaning |
 |---|---|
-| Name | Prospect name, e.g. `ali_tiktok` → folder `downloads/youtube_ali_tiktok/` is created |
+| Name | Prospect name, e.g. `ali_tiktok` → folder `downloads/youtube/ali_tiktok/` |
 | Channel / Profile link | YouTube channel, TikTok `@user`, Instagram profile, or X profile link |
 | Every (min) | How often to check for new videos (5–1440, default 15) |
 | Quality | `720p` (default) / `1080p` / `480p` / `360p` / `Best` — applies to YouTube |
@@ -52,7 +111,7 @@ The **Add prospect** form on the dashboard:
 
 ---
 
-## 3. Daily use
+## 2. Daily use
 
 | Button | Action |
 |---|---|
@@ -73,7 +132,7 @@ The **Add prospect** form on the dashboard:
 
 ---
 
-## 4. 🍪 Cookies Manager (`/cookies` page, header button)
+## 3. 🍪 Cookies Manager (`/cookies` page, header button)
 
 Instagram and X (Twitter) **don't serve profile data without login**.
 YouTube + TikTok usually work without cookies.
@@ -94,7 +153,7 @@ Cookies apply to the very next check — no restart needed.
 
 ---
 
-## 5. Troubleshooting
+## 4. Troubleshooting
 
 | Error / Symptom | Cause + fix |
 |---|---|
@@ -106,20 +165,28 @@ Cookies apply to the very next check — no restart needed.
 
 ---
 
-## 6. Project structure
+## 5. Project structure
 
 ```
-downloader/
-├── app.py               # Flask dashboard + scheduler + thread pool
+CreatorWatch/
+├── app.py               # Flask dashboard + scheduler + thread pool + tray + singleton
 ├── downloader.py        # yt-dlp/gallery-dl engine: fetch, download, first_run, auto-check
 ├── database.py          # SQLite: profiles, videos (done/skipped/seen), settings
-├── translations.py      # UI strings: en / ur / es / zh (~90 keys)
-├── data.db              # Database file (auto-created)
-├── downloads/           # One folder per prospect: <platform>_<name>/
-├── cookies.txt          # Your login cookies (managed from dashboard, never commit)
-├── templates/           # dashboard.html, edit.html, cookies.html, settings.html
+├── license_client.py    # M2: license gate (validates against license server)
+├── paths.py             # app_dir() vs user_data_dir() (%APPDATA%/CreatorWatch)
+├── translations.py      # UI strings: en / ur / es / zh
+├── templates/           # dashboard, edit, cookies, settings, updates, logs, activate
+├── assets/              # icon.ico / icon.png
+├── tools/               # deno, potserver, ffmpeg/ffprobe, yt-dlp
+├── installer/           # Inno Setup script (Windows) + install.sh (Linux)
+├── .github/workflows/   # release.yml — builds EXE + installer + Linux tarball
 ├── requirements.txt
-└── server.log           # Server logs
+└── license-server/      # M1+M3a: accounts API, web UI, admin panel
+    ├── app.py
+    ├── templates/
+    ├── Dockerfile
+    ├── docker-compose.yml
+    └── README.md
 ```
 
 **⚙ Performance (`/settings`):** parallel workers 1–10 (DB-persistent, live apply) + auto calculator (CPU/RAM/net → bottleneck suggestion).

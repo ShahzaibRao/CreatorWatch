@@ -40,7 +40,7 @@ HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", "5001"))
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("LICENSE_SESSION_SECRET", secrets.token_hex(32))
+app.secret_key = os.environ.get("LICENSE_SESSION_SECRET") or secrets.token_hex(32)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (

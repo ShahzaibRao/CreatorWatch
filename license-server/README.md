@@ -13,6 +13,36 @@ pip install -r requirements.txt
 python app.py        # http://127.0.0.1:5001
 ```
 
+## Run with Docker
+
+```bash
+cd license-server
+docker build -t creatorwatch-license .
+docker run -d --name creatorwatch-license -p 5001:5001 \
+  -e LICENSE_ADMIN_TOKEN="tumhara-strong-token" \
+  -e LICENSE_SESSION_SECRET="tumhara-random-secret" \
+  -e LICENSE_KEY_SECRET="tumhara-ek-aur-random-secret" \
+  -v licdata:/data \
+  creatorwatch-license
+# open http://127.0.0.1:5001
+```
+
+## Run with Docker Compose
+
+```bash
+cd license-server
+# production: teenon secrets set karo (warna defaults = sirf local test ke liye)
+export LICENSE_ADMIN_TOKEN="tumhara-strong-token"
+export LICENSE_SESSION_SECRET="tumhara-random-secret"
+export LICENSE_KEY_SECRET="tumhara-ek-aur-random-secret"
+docker compose up -d
+# open http://127.0.0.1:5001  |  logs: docker compose logs -f  |  stop: docker compose down
+```
+
+> **Secrets kabhi mat badalna** ek dafa set karne ke baad — `LICENSE_KEY_SECRET`
+> badla to purani license keys dashboard par reveal nahi hongi. `licdata`
+> volume me DB + secrets rehte hain, `docker compose down` par bhi safe.
+
 Open in browser:
 - `/` — landing page (this is what `cw.raoshahzaib.site` will serve)
 - `/signup`, `/login`, `/dashboard` — user accounts & licenses

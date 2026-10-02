@@ -1,0 +1,21 @@
+# Services
+services:
+  license-server:
+    build: .
+    container_name: creatorwatch-license
+    ports:
+      - "5001:5001"
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "5001"
+      LICENSE_DB: /data/licenses.db
+      # PRODUCTION me teenon set karo (neeche dekho). Local test ke liye defaults kaafi.
+      LICENSE_ADMIN_TOKEN: ${LICENSE_ADMIN_TOKEN:-change-me}
+      LICENSE_SESSION_SECRET: ${LICENSE_SESSION_SECRET:-}
+      LICENSE_KEY_SECRET: ${LICENSE_KEY_SECRET:-}
+    volumes:
+      - licdata:/data   # DB + key secret yahan — container delete par bhi mehfooz
+    restart: unless-stopped
+
+volumes:
+  licdata:
