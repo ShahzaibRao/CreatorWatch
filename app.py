@@ -297,10 +297,9 @@ def finish_job(pid, result):
 
 def _toast_done(p, new):
     """Download-complete popup (cloud branch). Never breaks the worker."""
-    try:
-        folder = prospect_folder(p["name"], p["platform"], p.get("folder") or "")
-    except Exception:
-        folder = ""
+    # NOTE: p["folder"] DB me pehle se resolved full path hai — isay dobara
+    # prospect_folder() me dalna base+platform+name double kar dega.
+    folder = p.get("folder") or ""
     try:
         notify.download_complete(p["name"], new, folder)
     except Exception as e:
