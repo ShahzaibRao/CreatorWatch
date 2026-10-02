@@ -334,7 +334,18 @@ def _ensure_single_instance(win_holder):
     False -> pehle se chal rahi hai (usay SHOW bhej diya) — ab exit karo."""
     import socket
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    if os.name == "nt":
+        # Windows quirk: SO_REUSEADDR lagane se DOOSRI copy bhi usi port par
+        # bind kar leti hai (Linux jaisa nahi!). SO_EXCLUSIVEADDRUSE lagao taake
+        # sirf pehli instance bind kar sake — yehi asal single-instance lock hai.
+        opt = getattr(socket, "SO_EXCLUSIVEADDRUSE", None)
+        if opt is not None:
+            try:
+                srv.setsockopt(socket.SOL_SOCKET, opt, 1)
+            except OSError:
+                pass
+    # NOTE: Linux/macOS par SO_REUSEADDR mat lagao — baghair uske hi doosri
+    # bind fail hoti hai, wahi single-instance ki guarantee hai.
     try:
         srv.bind(("127.0.0.1", _SINGLETON_PORT))
     except OSError:
