@@ -67,6 +67,42 @@ def latest_pypi(pkg):
     return ver, wheel_url
 
 
+def _download_blob(url, on_chunk=None, timeout=600, tries=3):
+    """Wheel download with retry — DNS/network blips par foran haar nahi manta."""
+    import time
+    last_err = None
+    for attempt in range(1, tries + 1):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "CreatorWatch"})
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                total = int(r.headers.get("Content-Length") or 0)
+                got, chunks = 0, []
+                while True:
+                    ch = r.read(1024 * 256)
+                    if not ch:
+                        break
+                    chunks.append(ch)
+                    got += len(ch)
+                    if total and on_chunk:
+                        on_chunk(got, total)
+            blob = b"".join(chunks)
+            if total and got != total:
+                raise Exception(f"download adhoora ({got}/{total} bytes)")
+            return blob
+        except Exception as e:
+            last_err = e
+            if attempt < tries:
+                time.sleep(2 * attempt)  # 2s, 4s backoff
+    raise last_err
+
+
+def _friendly_dl_error(e):
+    s = str(e)
+    if "getaddrinfo failed" in s or "11001" in s or "Name or service not known" in s:
+        return "internet/DNS masla (site resolve nahi hui) — thori dair baad dobara try karo"
+    return s[:150]
+
+
 def update_engines(progress=None):
     """Dono engines ke latest wheels PyPI se -> tools/pylibs. Returns (ok, report)."""
     def _pg(title, pct=None):
@@ -86,21 +122,8 @@ def update_engines(progress=None):
                 ok_all = False
                 continue
             _pg(f"{pkg} download…", 12 + i * 45)
-            req = urllib.request.Request(url, headers={"User-Agent": "CreatorWatch"})
-            with urllib.request.urlopen(req, timeout=600) as r:
-                total = int(r.headers.get("Content-Length") or 0)
-                got, chunks = 0, []
-                while True:
-                    ch = r.read(1024 * 256)
-                    if not ch:
-                        break
-                    chunks.append(ch)
-                    got += len(ch)
-                    if total:
-                        _pg(f"{pkg} download…", 12 + i * 45 + int(25 * got / total))
-                blob = b"".join(chunks)
-            if total and got != total:
-                raise Exception(f"download adhoora ({got}/{total} bytes) — purani copy mehfooz hai")
+            base = 12 + i * 45
+            blob = _download_blob(url, on_chunk=lambda got, total: _pg(f"{pkg} download…", base + int(25 * got / total)))
             # Wheel VERIFY karo PEHLE — purani working copy tabhi delete hogi jab
             # nayi poori utri ho (adhoori download se engine toot jata tha).
             try:
@@ -134,7 +157,7 @@ def update_engines(progress=None):
                 z.extractall(dest)
             report.append(f"{pkg} -> {ver}")
         except Exception as e:
-            report.append(f"{pkg} FAIL: {str(e)[:150]}")
+            report.append(f"{pkg} FAIL: {_friendly_dl_error(e)}")
             ok_all = False
     return ok_all, "; ".join(report)
 

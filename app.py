@@ -1020,20 +1020,34 @@ def _download_update(rel):
         return False, f"Download fail: {e}"
 
 def _restart_app():
-    """App restart: Windows = batch wait+launch; Linux = relaunch binary/script."""
+    """App restart: Windows = batch (PID wait + relaunch + log); Linux = relaunch binary/script."""
     import subprocess
     import sys as _sys
     try:
         if os.name == "nt":
             exe = os.path.abspath(_sys.executable)
-            bat = os.path.join(app_dir(), "_cw_restart.bat")
+            pid = os.getpid()
+            adir = app_dir()
+            bat = os.path.join(adir, "_cw_restart.bat")
+            log = os.path.join(adir, "_cw_restart.log")
+            argstr = " ".join(f'"{a}"' for a in _sys.argv[1:])
+            # Purana tareeqa (fixed 6s wait) kabhi kabhi relaunch nahi karta tha:
+            # ab apne PID ke marne ka WAIT karo, phir launch — aur har step log me.
             with open(bat, "w") as f:
-                f.write("@echo off\ntimeout /t 6 /nobreak >nul\n"
-                        f'start "" "{exe}"\n'
-                        'del "%~f0"\n')
-            subprocess.Popen(["cmd", "/c", bat], cwd=app_dir(),
+                f.write("@echo off\n")
+                f.write(f'echo [%date% %time%] restart: PID {pid} ka wait >> "{log}"\n')
+                f.write(":waitloop\n")
+                f.write(f'tasklist /FI "PID eq {pid}" 2>nul | find "{pid}" >nul\n')
+                f.write("if not errorlevel 1 ( timeout /t 1 /nobreak >nul & goto waitloop )\n")
+                f.write(f'echo [%date% %time%] launching "{exe}" >> "{log}"\n')
+                f.write(f'start "" "{exe}" {argstr}\n')
+                f.write(f'echo [%date% %time%] start exit=%errorlevel% >> "{log}"\n')
+                f.write('del "%~f0"\n')
+            flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+            subprocess.Popen(["cmd", "/c", bat], cwd=adir,
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                             stdin=subprocess.DEVNULL, close_fds=True)
+                             stdin=subprocess.DEVNULL, close_fds=True,
+                             creationflags=flags)
         else:
             exe = os.path.abspath(_sys.executable)
             subprocess.Popen([exe] + [a for a in _sys.argv[1:] if a != "--app"] + ["--app"],
