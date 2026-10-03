@@ -3,6 +3,7 @@ Flask>=3.0.0
 APScheduler>=3.10.0
 imageio-ffmpeg>=0.5.0
 gallery-dl>=1.32.0
+requests>=2.31.0  # gallery-dl ki dependency — EXE me bundle (pylibs me wheel ke sath nahi ati)
 pywebview>=5.0  # desktop window (exe + `python app.py --app`)
 bgutil-ytdlp-pot-provider>=2.0  # YouTube PO-token (bot-wall bypass)
 curl-cffi>=0.10  # TLS impersonation support

@@ -99,10 +99,26 @@ def update_engines(progress=None):
                     if total:
                         _pg(f"{pkg} download…", 12 + i * 45 + int(25 * got / total))
                 blob = b"".join(chunks)
+            if total and got != total:
+                raise Exception(f"download adhoora ({got}/{total} bytes) — purani copy mehfooz hai")
+            # Wheel VERIFY karo PEHLE — purani working copy tabhi delete hogi jab
+            # nayi poori utri ho (adhoori download se engine toot jata tha).
+            try:
+                z = zipfile.ZipFile(io.BytesIO(blob))
+                bad = z.testzip()
+                if bad:
+                    raise Exception(f"corrupt file ({bad})")
+                names = z.namelist()
+            except zipfile.BadZipFile:
+                raise Exception("corrupt download (zip nahi khula)")
+            mod = pkg.replace("-", "_")
+            if not any(n.startswith(mod + "/__init__.py") or n == mod + "/__init__.py" for n in names):
+                # kuch wheels me top-level dir alag hoti hai — kam az kam dist-info check karo
+                if not any(".dist-info/METADATA" in n for n in names):
+                    raise Exception("wheel me package nahi mila")
             dest = pylibs_dir()
             # purani copy saaf karo (sirf is package ki dirs)
             _pg(f"{pkg}: purani copy saaf…", 38 + i * 45)
-            mod = pkg.replace("-", "_")
             for entry in os.listdir(dest):
                 if entry == mod or entry.startswith(mod + "-"):
                     p = os.path.join(dest, entry)

@@ -4,6 +4,11 @@ from paths import app_dir, ensure_pylibs, user_data_dir
 ensure_pylibs()
 from database import video_exists, add_video, update_last_check
 
+# gallery-dl (tools/pylibs se) ko `requests` chahiye — EXE me bundle taake
+# pylibs ki halat jesi bhi ho, in-process gallery-dl hamesha chale.
+# (PyInstaller isi import ki wajah se requests bundle karta hai.)
+import requests  # noqa: F401
+
 def _yt_dlp():
     """Lazy import taake EXE lightweight rahe — engines Updates page se install hote hain."""
     try:
