@@ -1,8 +1,56 @@
 import os
 import re
+import sys as _sys
+import threading as _th
 from paths import app_dir, ensure_pylibs, user_data_dir
 ensure_pylibs()
 from database import video_exists, add_video, update_last_check
+
+class _ThreadCaptureIO:
+    """Thread-local stdout/stderr proxy.
+
+    gallery-dl in-process chalate waqt uska output capture karna hai, lekin
+    contextlib.redirect_stdout GLOBAL hai — agar worker thread atak jaye to
+    pure app ke print()/logs buffer me gum ho jate. Ye proxy sirf us thread
+    ka output pakarta hai jisne capture() kiya ho.
+    """
+    def __init__(self, original):
+        self._orig = original
+        self._local = _th.local()
+    def capture(self):
+        import io
+        buf = io.StringIO()
+        self.register(buf)
+        return buf
+    def register(self, buf):
+        """Kisi aur thread ke banaye hue buffer ko IS thread se joro."""
+        self._local.buf = buf
+    def release(self):
+        self._local.buf = None
+    def write(self, s):
+        buf = getattr(self._local, "buf", None)
+        (buf if buf is not None else self._orig).write(s)
+    def writelines(self, lines):
+        for line in lines:
+            self.write(line)
+    def flush(self):
+        buf = getattr(self._local, "buf", None)
+        (buf if buf is not None else self._orig).flush()
+    def isatty(self):
+        try:
+            return self._orig.isatty()
+        except Exception:
+            return False
+    @property
+    def encoding(self):
+        return getattr(self._orig, "encoding", "utf-8")
+    def __getattr__(self, name):
+        return getattr(self._orig, name)
+
+# App start par hi proxy lagao taake har print thread-safe rahe
+_proxy_stdout = _ThreadCaptureIO(_sys.stdout)
+_proxy_stderr = _ThreadCaptureIO(_sys.stderr)
+_sys.stdout, _sys.stderr = _proxy_stdout, _proxy_stderr
 
 # gallery-dl (tools/pylibs se) ko `requests` chahiye — EXE me bundle taake
 # pylibs ki halat jesi bhi ho, in-process gallery-dl hamesha chale.
@@ -525,30 +573,48 @@ def _gdl(args, timeout=300):
         # NOTE: gallery_dl.__main__ me main() nahi hota (sirf `if __name__ ==
         # "__main__"` guard hai) — asal entry point gallery_dl.main() hai jo
         # sys.argv se args parhta hai.
-        import io, contextlib
+        # Thread + timeout: gallery-dl network par atak jaye (x.com slow/hang)
+        # to worker hamesha ke liye block na ho.
+        import io, threading
         import gallery_dl
         out_buf, err_buf = io.StringIO(), io.StringIO()
-        rc = 1
+        rc = [1]
         old_argv = sys.argv
         sys.argv = ["gallery-dl"] + list(args)
-        try:
-            with contextlib.redirect_stdout(out_buf), contextlib.redirect_stderr(err_buf):
+        def _run():
+            # buffer isi (worker) thread se register — thread-local hai
+            _proxy_stdout.register(out_buf)
+            _proxy_stderr.register(err_buf)
+            try:
                 try:
-                    rc = gallery_dl.main() or 0
+                    rc[0] = gallery_dl.main() or 0
                 except SystemExit as e:
                     try:
-                        rc = int(e.code or 0)
+                        rc[0] = int(e.code or 0)
                     except (TypeError, ValueError):
-                        rc = 1
+                        rc[0] = 1
                 except Exception as e:
                     err_buf.write(f"gallery-dl error: {e}")
-                    rc = 1
-        finally:
-            sys.argv = old_argv
+                    rc[0] = 1
+            finally:
+                sys.argv = old_argv
+                _proxy_stdout.release()
+                _proxy_stderr.release()
+        t = threading.Thread(target=_run, daemon=True)
+        t.start()
+        t.join(timeout)
         class R:
             pass
         r = R()
-        r.returncode, r.stdout, r.stderr = rc, out_buf.getvalue(), err_buf.getvalue()
+        if t.is_alive():
+            # worker atak gaya — uska buffer release ho chuka hoga ya hoga;
+            # main thread ke prints mehfooz (proxy thread-local hai)
+            _proxy_stdout.release()
+            _proxy_stderr.release()
+            r.returncode, r.stdout = 1, out_buf.getvalue()
+            r.stderr = (err_buf.getvalue() + f"\ngallery-dl timeout ({timeout}s) — x.com/network atak gaya").strip()
+        else:
+            r.returncode, r.stdout, r.stderr = rc[0], out_buf.getvalue(), err_buf.getvalue()
         return r
     cmd = [sys.executable, "-m", "gallery_dl"] + args
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
@@ -578,7 +644,8 @@ def ig_fetch(profile_url: str, limit: int = 10):
         if len(entries) >= limit:
             break
     if not entries:
-        raise Exception("koi post nahi mili — cookies expire ho sakti hain, dobara import karo")
+        dbg = (p.stderr.strip() or p.stdout.strip())[:250]
+        raise Exception(f"koi post nahi mili [{dbg}] — cookies expire ho sakti hain, dobara import karo")
     return entries
 
 def tw_fetch(profile_url: str, limit: int = 10):
@@ -608,7 +675,8 @@ def tw_fetch(profile_url: str, limit: int = 10):
         if len(entries) >= limit:
             break
     if not entries:
-        raise Exception("koi tweet nahi mili — x.com login cookies chahiye, dobara import karo")
+        dbg = (p.stderr.strip() or p.stdout.strip())[:250]
+        raise Exception(f"koi tweet nahi mili [{dbg}] — x.com login cookies check karo, dobara import karo")
     return entries
 
 def ig_download(post_url: str, folder: str, progress=None):
