@@ -516,22 +516,30 @@ def _gdl(args, timeout=300):
     import subprocess, sys
     from paths import is_frozen
     if is_frozen():
-        # exe me alag python nahi — gallery-dl in-process chalao, output capture
+        # exe me alag python nahi — gallery-dl in-process chalao, output capture.
+        # NOTE: gallery_dl.__main__ me main() nahi hota (sirf `if __name__ ==
+        # "__main__"` guard hai) — asal entry point gallery_dl.main() hai jo
+        # sys.argv se args parhta hai.
         import io, contextlib
-        from gallery_dl import __main__ as gdl_main
+        import gallery_dl
         out_buf, err_buf = io.StringIO(), io.StringIO()
         rc = 1
-        with contextlib.redirect_stdout(out_buf), contextlib.redirect_stderr(err_buf):
-            try:
-                rc = gdl_main.main(args) or 0
-            except SystemExit as e:
+        old_argv = sys.argv
+        sys.argv = ["gallery-dl"] + list(args)
+        try:
+            with contextlib.redirect_stdout(out_buf), contextlib.redirect_stderr(err_buf):
                 try:
-                    rc = int(e.code or 0)
-                except (TypeError, ValueError):
+                    rc = gallery_dl.main() or 0
+                except SystemExit as e:
+                    try:
+                        rc = int(e.code or 0)
+                    except (TypeError, ValueError):
+                        rc = 1
+                except Exception as e:
+                    err_buf.write(f"gallery-dl error: {e}")
                     rc = 1
-            except Exception as e:
-                err_buf.write(f"gallery-dl error: {e}")
-                rc = 1
+        finally:
+            sys.argv = old_argv
         class R:
             pass
         r = R()
