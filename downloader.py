@@ -814,11 +814,13 @@ def _social_download_ytdlp(post_url: str, folder: str, quality: str = "720p", pr
     url = post_url
     if platform == "twitter":
         url = url.replace("x.com/i/web/status/", "twitter.com/i/status/").replace("x.com/i/status/", "twitter.com/i/status/").replace("x.com/", "twitter.com/")
+    # Instagram: images bhi hoti hain — video-only format na lagao
+    fmt = "best" if platform == "twitter" else "best/bestimage/best"
     opts = {
         "quiet": True,
         "no_warnings": True,
         "outtmpl": os.path.join(folder, "%(title).50s-%(id)s.%(ext)s"),
-        "format": "best",
+        "format": fmt,
         "merge_output_format": "mp4",
         "noplaylist": True,
         "progress_hooks": [_hook],
