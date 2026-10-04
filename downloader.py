@@ -740,7 +740,9 @@ def tw_fetch(profile_url: str, limit: int = 10):
             continue
         seen.add(tid)
         title = (" ".join(parts[2:]).strip()[:80] if len(parts) > 2 else tid) or tid
-        entries.append({"id": tid, "title": title, "url": f"https://x.com/i/status/{tid}"})
+        # gallery-dl ka TwitterTweetExtractor sirf /{user}/status/{id} ya
+        # /i/web/status/{id} pehchanta hai — /i/status/{id} match NAHI hota!
+        entries.append({"id": tid, "title": title, "url": f"https://x.com/i/web/status/{tid}"})
         if len(entries) >= limit:
             break
     if not entries:
