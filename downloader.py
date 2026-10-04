@@ -876,7 +876,9 @@ def first_run(profile: dict, progress=None):
                                      progress=(lambda u: progress({**{"stage": "downloading", "done": 0, "total": 1}, **u})) if progress else None,
                                      method=method)
             if fp == folder:
-                mark_seen(pid, latest["id"], title or latest["title"])
+                # gallery-dl ne koi file nahi banayi (text-only post ya download fail).
+                # "Seen" mark NA karo — agli bar dobara try hogi. Error me daalo taake user ko pata chale.
+                errors.append(f"{latest['id']}: download se koi file nahi mili (media na ho ya temporary masla — agli check me retry hogi)")
             else:
                 size = os.path.getsize(fp) if os.path.exists(fp) else 0
                 add_video(pid, latest["id"], title or latest["title"], fp, size)
