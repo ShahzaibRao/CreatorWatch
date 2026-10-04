@@ -974,7 +974,7 @@ def updates_page():
     return render_template("updates.html", version=VERSION, latest=latest or "—",
                            has_update=has_update, notes=(rel.get("body", "") or "")[:1500] if isinstance(rel, dict) else "",
                            engines=engine_versions(), frozen=is_frozen(), external=ext, ytstack=ytstack,
-                           pending=pending, msg=msg, msg_ok=msg_ok,
+                           pending=pending, msg=msg, msg_ok=msg_ok, app_dir=app_dir(),
                            rel_error=(rel.get("error", "") if isinstance(rel, dict) else ""))
 
 def _upgrade_engines(progress=None):

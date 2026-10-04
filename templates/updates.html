@@ -89,6 +89,9 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 {% else %}
 <p><small>Source mode me engines venv me pip se update hote hain.</small></p>
 {% endif %}
+{% if frozen %}
+<p><small>Install location: <code>{{ app_dir }}</code></small></p>
+{% endif %}
 </div></div>
 </div>
 <script>
