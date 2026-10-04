@@ -22,6 +22,14 @@ def pylibs_dir():
 
 def active_versions():
     out = {}
+    # Engine update ke baad nayi files foran nazar aayen — Python failed
+    # imports ka negative result cache kar leta hai (FileFinder), is liye
+    # har check se pehle cache saaf karo. Warna update ke baad bhi "?" rehta.
+    try:
+        import importlib
+        importlib.invalidate_caches()
+    except Exception:
+        pass
     try:
         from yt_dlp.version import __version__ as yv
         out["yt-dlp"] = yv
