@@ -61,6 +61,17 @@ td{padding:11px 8px;font-size:13.5px}
 /* Action buttons icon-only (jagah bachao) — hover par tooltip */
 .act .btn-txt{display:none}
 .act .icon-btn{padding:7px 8px}
+/* Folder browser modal */
+.fmodal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center}
+.fmodal.show{display:flex}
+.fmodal-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:90%;max-width:520px;max-height:80vh;display:flex;flex-direction:column}
+.fmodal-h{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.fmodal-h b{font-size:15px}
+.fmodal-path{padding:10px 18px;font-size:12px;color:var(--muted);font-family:ui-monospace,monospace;word-break:break-all;border-bottom:1px solid var(--border)}
+.fmodal-list{overflow-y:auto;padding:8px;flex:1;min-height:200px}
+.fmodal-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px}
+.fmodal-item:hover{background:var(--surface2)}
+.fmodal-f{padding:14px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
 /* Mobile-friendly */
 @media (max-width:768px){
   .card-h{flex-direction:column;align-items:flex-start}
@@ -302,6 +313,16 @@ a:hover .pfolder{color:var(--accent)}
   <div class="foot">{{ t('foot') }} · v{{ version }} · <a href="/logs">📋 Logs</a></div>
 </div>
 
+<!-- Folder browser modal -->
+<div class="fmodal" id="folderModal">
+  <div class="fmodal-box">
+    <div class="fmodal-h"><b>📁 Folder select karo</b><button class="btn ghost" style="padding:4px 10px" onclick="closeFolderModal()">✕</button></div>
+    <div class="fmodal-path" id="fmodalPath">...</div>
+    <div class="fmodal-list" id="fmodalList"></div>
+    <div class="fmodal-f"><button class="btn ghost" onclick="closeFolderModal()">Cancel</button><button class="btn" onclick="selectFolder()">✅ Ye folder select karo</button></div>
+  </div>
+</div>
+
 <script>
 (function(){
   var root=document.documentElement, btn=document.getElementById('themeBtn'),
@@ -324,9 +345,46 @@ a:hover .pfolder{color:var(--accent)}
   if(window.pywebview){ document.querySelectorAll('.browse-btn').forEach(function(b){
     b.onclick=function(){ window.pywebview.api.pick_folder().then(function(p){ if(p) document.getElementById(b.dataset.target).value=p; }); };
   }); } else { document.querySelectorAll('.browse-btn').forEach(function(b){
-    b.style.display='none';
-    var inp=document.getElementById(b.dataset.target); if(inp){ inp.removeAttribute('readonly'); inp.placeholder='path paste karo (browser mode)'; }
+    // Browser mode: custom folder browser modal
+    b.style.display='';
+    b.onclick=function(){ openFolderModal(b.dataset.target); };
   }); }
+/* Folder browser modal */
+var _folderTarget=null, _folderPath='';
+window.openFolderModal=function(targetId){
+  _folderTarget=targetId;
+  document.getElementById('folderModal').classList.add('show');
+  browseFolder('');
+};
+window.closeFolderModal=function(){
+  document.getElementById('folderModal').classList.remove('show');
+};
+window.browseFolder=function(path){
+  fetch('/api/browse?path='+encodeURIComponent(path)).then(function(r){return r.json()}).then(function(d){
+    _folderPath=d.path;
+    document.getElementById('fmodalPath').textContent=d.path||'Drives';
+    var h='';
+    if(d.drives && d.drives.length){
+      d.drives.forEach(function(drv){
+        h+='<div class="fmodal-item" onclick="browseFolder(\''+drv.replace(/\\/g,'\\\\')+'\')">💽 '+drv+'</div>';
+      });
+    } else {
+      if(d.parent) h+='<div class="fmodal-item" onclick="browseFolder(\''+d.parent.replace(/\\/g,'\\\\').replace(/\'/g,"\\'")+'\')">⬆️ .. (upar)</div>';
+      d.folders.forEach(function(f){
+        var fp=(d.path+'/'+f).replace(/\\/g,'/');
+        h+='<div class="fmodal-item" onclick="browseFolder(\''+fp.replace(/\'/g,"\\'")+'\')">📁 '+f+'</div>';
+      });
+      if(!d.folders.length) h+='<div style="padding:20px;text-align:center;color:var(--muted)">Koi folder nahi</div>';
+    }
+    document.getElementById('fmodalList').innerHTML=h;
+  });
+};
+window.selectFolder=function(){
+  if(_folderTarget && _folderPath){
+    document.getElementById(_folderTarget).value=_folderPath;
+  }
+  closeFolderModal();
+};
   setInterval(function(){
     fetch('/api/jobs').then(function(r){return r.json()}).then(function(d){
       var jobs=d.jobs||{};

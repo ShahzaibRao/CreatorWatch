@@ -700,6 +700,28 @@ def open_folder(pid):
         pass
     return redirect(url_for("dashboard"))
 
+@app.route("/api/browse")
+def api_browse():
+    """Folder browser — path ke andar wale folders ki list."""
+    req_path = request.args.get("path", "")
+    # Default: home ya drives
+    if not req_path:
+        if sys.platform == "win32":
+            import string
+            drives = [f"{d}:\\" for d in string.ascii_uppercase if os.path.exists(f"{d}:\\")]
+            return {"path": "", "folders": [], "drives": drives, "parent": None}
+        else:
+            req_path = os.path.expanduser("~")
+    req_path = os.path.abspath(req_path)
+    if not os.path.isdir(req_path):
+        req_path = os.path.expanduser("~")
+    try:
+        items = sorted([d for d in os.listdir(req_path) if os.path.isdir(os.path.join(req_path, d)) and not d.startswith(".")])
+    except Exception:
+        items = []
+    parent = os.path.dirname(req_path) if os.path.dirname(req_path) != req_path else None
+    return {"path": req_path, "folders": items, "drives": [], "parent": parent}
+
 @app.route("/pause/<int:pid>")
 def pause(pid):
     db.set_status(pid, "paused")
