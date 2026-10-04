@@ -27,6 +27,20 @@ REPO = "ShahzaibRao/CreatorWatch"
 app = Flask(__name__)
 db.init_db()
 
+@app.template_filter("humantime")
+def humantime_filter(s):
+    """2026-10-04T10:06:22.949529 -> 04 Oct, 10:06 AM"""
+    if not s:
+        return s
+    try:
+        from datetime import datetime
+        # ISO format parse (T aur microseconds handle karo)
+        dt = datetime.fromisoformat(str(s).replace("Z", "+00:00"))
+        return dt.strftime("%d %b, %I:%M %p")
+    except Exception:
+        # fallback: T ko space se badlo, microseconds hatao
+        return str(s).replace("T", " ")[:16]
+
 def _lang():
     c = request.cookies.get("lang", "ur") if request else "ur"
     return c if c in LANGS else "ur"

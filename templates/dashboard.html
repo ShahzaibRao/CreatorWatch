@@ -257,7 +257,7 @@ a:hover .pfolder{color:var(--accent)}
       {% for p in profiles %}
       <tr data-pid="{{ p.id }}" data-name="{{ p.name|lower }}">
         <td><input type="checkbox" class="row-check pros-check" value="{{ p.id }}" onchange="updateBulk()"></td>
-        <td><a href="/open_folder/{{ p.id }}" title="Folder kholo" style="text-decoration:none;color:inherit"><span class="pname">{{ p.name }}</span></a> {% if p.id in unseen_pids %}<span class="pill new">{{ t('new') }}</span>{% endif %}<br><a href="/open_folder/{{ p.id }}" title="Folder kholo: {{ p.folder }}" style="text-decoration:none"><span class="pfolder" title="{{ p.folder }}">{{ p.folder }}</span></a><br><span style="font-size:11.5px;color:var(--muted)">{{ p.last_check or t('first_dl') }}</span>
+        <td><a href="/open_folder/{{ p.id }}" title="Folder kholo" style="text-decoration:none;color:inherit"><span class="pname">{{ p.name }}</span></a> {% if p.id in unseen_pids %}<span class="pill new">{{ t('new') }}</span>{% endif %}<br><a href="/open_folder/{{ p.id }}" title="Folder kholo: {{ p.folder }}" style="text-decoration:none"><span class="pfolder" title="{{ p.folder }}">{{ p.folder }}</span></a><br><span style="font-size:11.5px;color:var(--muted)">{{ p.last_check|humantime or t('first_dl') }}</span>
           <div class="prog" id="prog-{{ p.id }}"><div class="bar"><div class="fill"></div></div><small></small></div>
         </td>
         <td><span class="badge {% if p.platform=='youtube' %}yt{% elif p.platform=='tiktok' %}tk{% elif p.platform=='instagram' %}ig{% elif p.platform=='twitter' %}tw{% endif %}">{{ p.platform }}</span></td>
