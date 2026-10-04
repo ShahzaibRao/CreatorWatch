@@ -187,7 +187,6 @@ a:hover .pfolder{color:var(--accent)}
       <a class="theme-btn" href="/cookies" style="text-decoration:none">🍪 {{ t('cookies_btn') }}</a>
     <a class="theme-btn" href="/updates" style="text-decoration:none">⬆ Updates</a>
     <a class="theme-btn" href="/settings" style="text-decoration:none">⚙ {{ t('settings_btn') }}</a>
-    <a class="theme-btn" href="https://github.com/ShahzaibRao/CreatorWatch/releases/tag/v0.1.0" target="_blank" rel="noopener" style="text-decoration:none" title="Download Desktop App">💻 {{ t('dl_desktop') }}</a>
       <select class="langsel" id="langSel" aria-label="Language">
         {% for code, name in langs.items() %}
         <option value="{{ code }}" {% if code==lang %}selected{% endif %}>{{ name }}</option>
