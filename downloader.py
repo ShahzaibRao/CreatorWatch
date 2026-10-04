@@ -797,8 +797,8 @@ QUALITY_FORMATS = {
     "360p": "bv*[height<=360]+ba/b[height<=360]",
 }
 
-def _tw_download_ytdlp(tw_url: str, folder: str, quality: str = "720p", progress=None):
-    """Twitter video yt-dlp se. Returns (filepath, title)."""
+def _social_download_ytdlp(post_url: str, folder: str, quality: str = "720p", progress=None, platform: str = "twitter"):
+    """Instagram/Twitter post yt-dlp se. Returns (filepath, title)."""
     def _hook(d):
         if progress and d.get("status") == "downloading":
             try:
@@ -810,6 +810,10 @@ def _tw_download_ytdlp(tw_url: str, folder: str, quality: str = "720p", progress
             progress({"pct": pct, "speed": d.get("speed"), "title": d.get("filename", "")[-60:]})
         elif progress and d.get("status") == "finished":
             progress({"pct": 100, "speed": None})
+    # URL normalize taake yt-dlp pehchane
+    url = post_url
+    if platform == "twitter":
+        url = url.replace("x.com/i/web/status/", "twitter.com/i/status/").replace("x.com/i/status/", "twitter.com/i/status/").replace("x.com/", "twitter.com/")
     opts = {
         "quiet": True,
         "no_warnings": True,
@@ -824,29 +828,29 @@ def _tw_download_ytdlp(tw_url: str, folder: str, quality: str = "720p", progress
     if ff:
         opts["ffmpeg_location"] = ff
     ydl = _yt_dlp().YoutubeDL(opts)
-    info = ydl.extract_info(tw_url, download=True)
+    info = ydl.extract_info(url, download=True)
     fp = ydl.prepare_filename(info)
     if not os.path.exists(fp):
         base = os.path.splitext(fp)[0]
-        for ext in (".mp4", ".mkv", ".webm"):
+        for ext in (".mp4", ".mkv", ".webm", ".jpg", ".png"):
             if os.path.exists(base + ext):
                 fp = base + ext
                 break
     if not os.path.exists(fp):
-        # yt-dlp ne kuch download nahi kiya (text-only tweet?)
-        return folder, tw_url
+        # yt-dlp ne kuch download nahi kiya (text-only post?)
+        return folder, url
     return fp, info.get("title", info.get("id"))
+
+def _tw_download_ytdlp(tw_url: str, folder: str, quality: str = "720p", progress=None):
+    """Twitter video yt-dlp se. Returns (filepath, title)."""
+    return _social_download_ytdlp(tw_url, folder, quality, progress, "twitter")
 
 def download_one(video_url: str, folder: str, quality: str = "720p", platform: str = "youtube", progress=None, method: str = "auto"):
     """Download single video, return (filepath, title). YouTube: auto = direct, wall par PO-token retry."""
-    if platform == "instagram":
-        return ig_download(video_url, folder, progress)
-    # Twitter: yt-dlp se (gallery-dl video download me masla karta hai).
-    # yt-dlp cookies se Twitter videos download kar leta hai.
-    if platform == "twitter":
-        # tweet URL ko canonical banao taake yt-dlp pehchane
-        tw_url = video_url.replace("x.com/i/web/status/", "x.com/i/status/").replace("x.com/i/status/", "twitter.com/i/status/")
-        return _tw_download_ytdlp(tw_url, folder, quality, progress)
+    # Instagram/Twitter: yt-dlp se (gallery-dl in-process download me masla karta hai).
+    # Listings (tw_fetch/ig_fetch) gallery-dl se hi hongi — wo kaam karti hain.
+    if platform in ("instagram", "twitter"):
+        return _social_download_ytdlp(video_url, folder, quality, progress, platform)
     if platform == "tiktok":
         fmt = "best/b"  # tiktok par single-file best (height filter support nahi)
     else:
