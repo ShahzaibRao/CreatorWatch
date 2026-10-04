@@ -589,11 +589,24 @@ def fetch_latest_entries(profile_url: str, scope: str = "both"):
     return entries[:10]
 
 def _ffmpeg():
+    # Priority: 1) tools/ffmpeg.exe (user ne Update Engines se install kiya)
+    #           2) EXE me bundled imageio-ffmpeg (fallback)
+    #           3) system PATH
+    try:
+        tp = os.path.join(BASE_DIR, "tools", "ffmpeg.exe" if _sys.platform == "win32" else "ffmpeg")
+        if os.path.exists(tp) and os.path.getsize(tp) > 100000:
+            return tp
+    except Exception:
+        pass
     try:
         import imageio_ffmpeg
-        return imageio_ffmpeg.get_ffmpeg_exe()
+        ff = imageio_ffmpeg.get_ffmpeg_exe()
+        if ff and os.path.exists(ff):
+            return ff
     except Exception:
-        return None
+        pass
+    import shutil
+    return shutil.which("ffmpeg")
 
 def _env_with_ffmpeg():
     """gallery-dl subprocess ke liye ffmpeg.exe PATH me (merge ke liye)."""

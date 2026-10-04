@@ -10,6 +10,9 @@ import zipfile
 from paths import app_dir
 
 ENGINES = ("yt-dlp", "gallery-dl")
+# ffmpeg alag hai — ye Python package nahi, binary hai. imageio-ffmpeg ke
+# wheel se binary nikal kar tools/ me rakhenge. User khud update kar sakega.
+FFMPEG_PKG = "imageio-ffmpeg"
 PYPI = "https://pypi.org/pypi/{pkg}/json"
 UA = {"User-Agent": "CreatorWatch", "Accept": "application/json"}
 
@@ -18,6 +21,42 @@ def pylibs_dir():
     d = os.path.join(app_dir(), "tools", "pylibs")
     os.makedirs(d, exist_ok=True)
     return d
+
+
+def _ffmpeg_exe_name():
+    import sys
+    return "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
+
+
+def _ffmpeg_tools_path():
+    """tools/ffmpeg.exe — user ne Update Engines se install kiya ho to."""
+    return os.path.join(app_dir(), "tools", _ffmpeg_exe_name())
+
+
+def _ffmpeg_version_file():
+    return os.path.join(app_dir(), "tools", "ffmpeg.version")
+
+
+def ffmpeg_active_version():
+    """Kaun sa ffmpeg use hoga: tools/ wala (user-updated) ya bundled ya system."""
+    tp = _ffmpeg_tools_path()
+    if os.path.exists(tp):
+        try:
+            with open(_ffmpeg_version_file()) as f:
+                return f.read().strip() or "ext"
+        except Exception:
+            return "ext"
+    try:
+        import imageio_ffmpeg
+        ff = imageio_ffmpeg.get_ffmpeg_exe()
+        if ff and os.path.exists(ff):
+            return "bundled"
+    except Exception:
+        pass
+    import shutil
+    if shutil.which("ffmpeg"):
+        return "system"
+    return "?"
 
 
 def active_versions():
@@ -42,6 +81,7 @@ def active_versions():
     except Exception as e:
         out["gallery-dl"] = "?"
         out["gallery-dl-error"] = f"{type(e).__name__}: {e}"[:300]
+    out["ffmpeg"] = ffmpeg_active_version()
     return out
 
 
@@ -216,8 +256,98 @@ def _install_ytdlp_github(pypi_ver, _pg):
     return f"yt-dlp -> {pypi_ver} (GitHub)"
 
 
+def latest_pypi_platform(pkg):
+    """Platform-specific wheel (imageio-ffmpeg jese packages ke liye).
+    Returns (ver, wheel_url) — is platform ka wheel."""
+    import sys, platform
+    req = urllib.request.Request(PYPI.format(pkg=pkg), headers=UA)
+    with urllib.request.urlopen(req, timeout=20) as r:
+        data = json.load(r)
+    ver = data["info"]["version"]
+    wheel_url = ""
+    machine = platform.machine().lower()
+    for u in data.get("urls", []):
+        if u.get("packagetype") != "bdist_wheel":
+            continue
+        fn = u.get("filename", "").lower()
+        if sys.platform == "win32":
+            if "win_amd64" in fn or "win32" in fn:
+                wheel_url = u["url"]
+                break
+        else:
+            # linux: manylinux + arch match
+            if "manylinux" in fn and (machine in fn or "x86_64" in fn):
+                wheel_url = u["url"]
+                break
+    return ver, wheel_url
+
+
+def _install_ffmpeg_blob(ver, blob, _pg):
+    """imageio-ffmpeg wheel se ffmpeg binary nikal kar tools/ me rakho."""
+    import sys
+    try:
+        z = zipfile.ZipFile(io.BytesIO(blob))
+        bad = z.testzip()
+        if bad:
+            raise Exception(f"corrupt file ({bad})")
+        names = z.namelist()
+    except zipfile.BadZipFile:
+        raise Exception("corrupt download (zip nahi khula)")
+    # binary dhoondo: imageio_ffmpeg/binaries/ffmpeg-win-x86_64-v7.1.exe
+    cands = [n for n in names if "/binaries/ffmpeg-" in n and not n.endswith("/")]
+    if not cands:
+        raise Exception("wheel me ffmpeg binary nahi mili")
+    # is platform ki binary chuno
+    picked = ""
+    for n in cands:
+        nl = n.lower()
+        if sys.platform == "win32" and "ffmpeg-win-" in nl:
+            picked = n
+            break
+        elif sys.platform != "win32" and "ffmpeg-linux-" in nl:
+            picked = n
+            break
+    if not picked:
+        picked = cands[0]
+    _pg("ffmpeg: install…", None)
+    dest = _ffmpeg_tools_path()
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    with zipfile.ZipFile(io.BytesIO(blob)) as z:
+        with z.open(picked) as src, open(dest, "wb") as out:
+            shutil.copyfileobj(src, out)
+    if sys.platform != "win32":
+        os.chmod(dest, 0o755)
+    with open(_ffmpeg_version_file(), "w") as f:
+        f.write(ver)
+    # sanity: file mojood aur khaali nahi
+    if not os.path.exists(dest) or os.path.getsize(dest) < 100000:
+        raise Exception("ffmpeg binary verify fail")
+    return f"ffmpeg -> {ver}"
+
+
+def update_ffmpeg(progress=None):
+    """ffmpeg ka latest binary imageio-ffmpeg wheel se -> tools/. Returns (ok, report)."""
+    def _pg(title, pct=None):
+        if progress:
+            try:
+                progress({"title": title, "pct": pct})
+            except Exception:
+                pass
+    try:
+        _pg("ffmpeg: latest version check…", None)
+        ver, url = latest_pypi_platform(FFMPEG_PKG)
+        if not url:
+            return False, "ffmpeg: is platform ka wheel nahi mila"
+        _pg("ffmpeg download…", None)
+        blob = _download_blob(url, on_chunk=lambda got, total: _pg("ffmpeg download…", None))
+        report = _install_ffmpeg_blob(ver, blob, _pg)
+        return True, report
+    except Exception as e:
+        return False, f"ffmpeg FAIL: {_friendly_dl_error(e)}"
+
+
 def update_engines(progress=None):
-    """Dono engines ke latest wheels PyPI se -> tools/pylibs. Returns (ok, report)."""
+    """Dono engines + ffmpeg ke latest wheels PyPI se. Returns (ok, report)."""
     def _pg(title, pct=None):
         if progress:
             try:
@@ -228,31 +358,43 @@ def update_engines(progress=None):
     report, ok_all = [], True
     for i, pkg in enumerate(ENGINES):
         try:
-            _pg(f"{pkg}: latest version check…", 5 + i * 45)
+            _pg(f"{pkg}: latest version check…", 5 + i * 35)
             ver, url = latest_pypi(pkg)
             if not url:
                 report.append(f"{pkg}: wheel nahi mili")
                 ok_all = False
                 continue
-            _pg(f"{pkg} download…", 12 + i * 45)
-            base = 12 + i * 45
+            _pg(f"{pkg} download…", 10 + i * 35)
+            base = 10 + i * 35
             try:
-                blob = _download_blob(url, on_chunk=lambda got, total: _pg(f"{pkg} download…", base + int(25 * got / total)))
-                _install_wheel_blob(pkg, blob, _pg, 38 + i * 45, 42 + i * 45)
+                blob = _download_blob(url, on_chunk=lambda got, total: _pg(f"{pkg} download…", base + int(20 * got / total)))
+                _install_wheel_blob(pkg, blob, _pg, 30 + i * 35, 33 + i * 35)
                 report.append(f"{pkg} -> {ver}")
             except Exception as dl_err:
                 if pkg == "yt-dlp":
                     # PyPI atak/fail ho to GitHub release se (wo is network par chalta hai)
-                    _pg("yt-dlp: PyPI se nahi utra — GitHub se try…", 20 + i * 45)
+                    _pg("yt-dlp: PyPI se nahi utra — GitHub se try…", 15 + i * 35)
                     report.append(_install_ytdlp_github(ver, _pg))
                 else:
                     raise
         except Exception as e:
             report.append(f"{pkg} FAIL: {_friendly_dl_error(e)}")
             ok_all = False
+    # ffmpeg (binary) — alag se, taake user khud update kar sake
+    _pg("ffmpeg: check…", 80)
+    fok, frep = update_ffmpeg(progress=progress)
+    report.append(frep)
+    if not fok:
+        ok_all = False
     return ok_all, "; ".join(report)
 
 
 def clear_external():
     d = os.path.join(app_dir(), "tools", "pylibs")
     shutil.rmtree(d, ignore_errors=True)
+    # ffmpeg (user-updated) bhi hatao — bundled wapas aayega
+    for f in (_ffmpeg_tools_path(), _ffmpeg_version_file()):
+        try:
+            os.remove(f)
+        except OSError:
+            pass
