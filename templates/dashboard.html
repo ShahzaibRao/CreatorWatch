@@ -60,7 +60,17 @@ th{font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut
 td{padding:13px 14px;border-bottom:1px solid var(--border);font-size:14px;vertical-align:middle}
 tr:last-child td{border-bottom:0}
 .pname{font-weight:700}
-.pfolder{font-size:12px;color:var(--muted);font-family:ui-monospace,Consolas,monospace;word-break:break-all}
+.pfolder{font-size:12px;color:var(--muted);font-family:ui-monospace,Consolas,monospace;word-break:break-all;display:inline-block;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+/* Prospects: search + pagination + bulk */
+.pros-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.search-box{padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;min-width:200px}
+.pager{display:flex;gap:6px;align-items:center;justify-content:center;padding:14px 0 4px;flex-wrap:wrap}
+.pager button{padding:6px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;cursor:pointer}
+.pager button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.pager button:disabled{opacity:.4;cursor:default}
+.bulk-bar{display:none;gap:10px;align-items:center;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;font-size:13px}
+.bulk-bar.show{display:flex}
+.row-check{width:18px;height:18px;cursor:pointer;accent-color:var(--accent)}
 .badge{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid var(--border);background:var(--surface2);white-space:nowrap}
 .badge.yt{color:#f0524f;border-color:rgba(240,82,79,.4)}
 .badge.tk{color:var(--text)}
@@ -218,14 +228,16 @@ tr:last-child td{border-bottom:0}
   </div>
 
   <div class="card" style="margin-bottom:14px">
-    <div class="card-h"><h2>{{ t('prosp_title') }}</h2><div style="display:flex;gap:10px;align-items:center"><a class="btn ghost" style="padding:8px 14px;font-size:13px" href="/check_all">{{ t('check_all') }}</a></div></div>
+    <div class="card-h"><h2>{{ t('prosp_title') }}</h2><div class="pros-tools"><input id="prosSearch" class="search-box" placeholder="🔍 Search prospects..." oninput="prosFilter()"><a class="btn ghost" style="padding:8px 14px;font-size:13px" href="/check_all">{{ t('check_all') }}</a></div></div>
+    <div class="bulk-bar" id="bulkBar"><span id="bulkCount">0 selected</span><button class="btn danger" style="padding:6px 12px;font-size:13px" onclick="bulkDelete()">🗑 Delete selected</button><button class="btn ghost" style="padding:6px 12px;font-size:13px" onclick="clearSelection()">Clear</button></div>
     {% if profiles %}
     <div class="twrap">
-    <table>
-      <tr><th>{{ t('c_prospect') }}</th><th>{{ t('c_platform') }}</th><th>{{ t('c_every') }}</th><th>{{ t('c_quality') }}</th><th>Scope</th><th>{{ t('c_videos') }}</th><th>{{ t('c_status') }}</th><th></th></tr>
+    <table id="prosTable">
+      <tr><th><input type="checkbox" class="row-check" id="checkAll" onchange="toggleAll(this)"></th><th>{{ t('c_prospect') }}</th><th>{{ t('c_platform') }}</th><th>{{ t('c_every') }}</th><th>{{ t('c_quality') }}</th><th>Scope</th><th>{{ t('c_videos') }}</th><th>{{ t('c_status') }}</th><th></th></tr>
       {% for p in profiles %}
-      <tr>
-        <td><span class="pname">{{ p.name }}</span> {% if p.id in unseen_pids %}<span class="pill new">{{ t('new') }}</span>{% endif %}<br><span class="pfolder">{{ p.folder }}</span><br><span style="font-size:11.5px;color:var(--muted)">{{ p.last_check or t('first_dl') }}</span>
+      <tr data-pid="{{ p.id }}" data-name="{{ p.name|lower }}">
+        <td><input type="checkbox" class="row-check pros-check" value="{{ p.id }}" onchange="updateBulk()"></td>
+        <td><span class="pname">{{ p.name }}</span> {% if p.id in unseen_pids %}<span class="pill new">{{ t('new') }}</span>{% endif %}<br><span class="pfolder" title="{{ p.folder }}">{{ p.folder }}</span><br><span style="font-size:11.5px;color:var(--muted)">{{ p.last_check or t('first_dl') }}</span>
           <div class="prog" id="prog-{{ p.id }}"><div class="bar"><div class="fill"></div></div><small></small></div>
         </td>
         <td><span class="badge {% if p.platform=='youtube' %}yt{% elif p.platform=='tiktok' %}tk{% elif p.platform=='instagram' %}ig{% elif p.platform=='twitter' %}tw{% endif %}">{{ p.platform }}</span></td>
@@ -238,12 +250,13 @@ tr:last-child td{border-bottom:0}
           <a class="icon-btn" href="/check/{{ p.id }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 4v6h-6"/><path d="M20.5 15a9 9 0 1 1-2-9.4L23 10"/></svg>{{ t('check') }}</a>
           {% if p.status=='paused' %}<a class="icon-btn" href="/resume/{{ p.id }}">▶ {{ t('resume') }}</a>{% else %}<a class="icon-btn" href="/pause/{{ p.id }}">⏸ {{ t('stop') }}</a>{% endif %}
           <a class="icon-btn" href="/edit/{{ p.id }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>{{ t('edit') }}</a>
-          <a class="icon-btn danger" href="/delete/{{ p.id }}" onclick="return confirm('{{ t('del_confirm') }} {{ p.name }}?')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>{{ t('delete') }}</a>
+          <a class="icon-btn danger" href="javascript:void(0)" onclick="ajaxDelete({{ p.id }}, '{{ p.name|replace(\"'\", \"\\\\'\") }}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>{{ t('delete') }}</a>
         </div></td>
       </tr>
       {% endfor %}
     </table>
     </div>
+    <div class="pager" id="prosPager"></div>
     {% else %}
     <div class="empty">{{ t('no_prospects') }}</div>
     {% endif %}
@@ -326,6 +339,85 @@ tr:last-child td{border-bottom:0}
       }
     }).catch(function(){});
   },15000);
+})();
+/* Prospects: search + pagination (10/page) + AJAX delete + bulk */
+(function(){
+  var PER_PAGE=10, curPage=1, rows=[];
+  function getRows(){
+    var t=document.getElementById('prosTable');
+    if(!t) return [];
+    return Array.prototype.slice.call(t.querySelectorAll('tr[data-pid]'));
+  }
+  function filtered(){
+    var q=(document.getElementById('prosSearch').value||'').toLowerCase().trim();
+    return getRows().filter(function(r){
+      return !q || (r.getAttribute('data-name')||'').indexOf(q)>=0;
+    });
+  }
+  window.prosFilter=function(){ curPage=1; renderPros(); };
+  function renderPros(){
+    var list=filtered(), pager=document.getElementById('prosPager');
+    var totalPages=Math.max(1, Math.ceil(list.length/PER_PAGE));
+    if(curPage>totalPages) curPage=totalPages;
+    var start=(curPage-1)*PER_PAGE, end=start+PER_PAGE;
+    getRows().forEach(function(r){ r.style.display='none'; });
+    list.slice(start,end).forEach(function(r){ r.style.display=''; });
+    // pager buttons
+    var h='';
+    h+='<button onclick="prosGo('+(curPage-1)+')" '+(curPage<=1?'disabled':'')+'>‹ Prev</button>';
+    for(var i=1;i<=totalPages;i++){
+      if(totalPages>7 && Math.abs(i-curPage)>2 && i!==1 && i!==totalPages){ if(h.slice(-3)!=='...') h+='<span>...</span>'; continue; }
+      h+='<button onclick="prosGo('+i+')" class="'+(i===curPage?'active':'')+'">'+i+'</button>';
+    }
+    h+='<button onclick="prosGo('+(curPage+1)+')" '+(curPage>=totalPages?'disabled':'')+'>Next ›</button>';
+    pager.innerHTML=h;
+  }
+  window.prosGo=function(p){ curPage=p; renderPros(); };
+  // AJAX single delete — page reload nahi, wahi raho
+  window.ajaxDelete=function(pid, name){
+    if(!confirm('Delete "'+name+'"?')) return;
+    fetch('/api/delete/'+pid,{method:'POST'}).then(function(r){return r.json()}).then(function(d){
+      if(d.ok){
+        var row=document.querySelector('tr[data-pid="'+pid+'"]');
+        if(row) row.remove();
+        updateBulk(); renderPros();
+      }
+    });
+  };
+  // bulk select
+  window.toggleAll=function(cb){
+    document.querySelectorAll('.pros-check').forEach(function(c){
+      var r=c.closest('tr');
+      if(r && r.style.display!=='none') c.checked=cb.checked;
+    });
+    updateBulk();
+  };
+  window.updateBulk=function(){
+    var sel=document.querySelectorAll('.pros-check:checked');
+    var bar=document.getElementById('bulkBar');
+    document.getElementById('bulkCount').textContent=sel.length+' selected';
+    bar.classList.toggle('show', sel.length>0);
+  };
+  window.clearSelection=function(){
+    document.querySelectorAll('.pros-check').forEach(function(c){c.checked=false});
+    document.getElementById('checkAll').checked=false;
+    updateBulk();
+  };
+  window.bulkDelete=function(){
+    var ids=Array.prototype.map.call(document.querySelectorAll('.pros-check:checked'),function(c){return c.value});
+    if(!ids.length) return;
+    if(!confirm(ids.length+' prospects delete karein?')) return;
+    fetch('/api/delete_bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids:ids})})
+    .then(function(r){return r.json()}).then(function(d){
+      (d.deleted||[]).forEach(function(pid){
+        var row=document.querySelector('tr[data-pid="'+pid+'"]');
+        if(row) row.remove();
+      });
+      clearSelection(); renderPros();
+    });
+  };
+  // init
+  if(document.getElementById('prosTable')) renderPros();
 })();
 </script>
 </body>

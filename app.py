@@ -645,6 +645,26 @@ def delete(pid):
     db.delete_profile(pid)
     return redirect(url_for("dashboard"))
 
+@app.route("/api/delete/<int:pid>", methods=["POST"])
+def api_delete(pid):
+    """AJAX delete — page reload nahi hota."""
+    db.delete_profile(pid)
+    return {"ok": True, "id": pid}
+
+@app.route("/api/delete_bulk", methods=["POST"])
+def api_delete_bulk():
+    """Multiple prospects ek sath delete."""
+    data = request.get_json(force=True, silent=True) or {}
+    ids = data.get("ids", [])
+    deleted = []
+    for pid in ids:
+        try:
+            db.delete_profile(int(pid))
+            deleted.append(int(pid))
+        except Exception:
+            pass
+    return {"ok": True, "deleted": deleted}
+
 @app.route("/pause/<int:pid>")
 def pause(pid):
     db.set_status(pid, "paused")
