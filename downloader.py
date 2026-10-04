@@ -764,6 +764,10 @@ def ig_download(post_url: str, folder: str, progress=None):
     after = [f for f in glob.glob(os.path.join(folder, "**", "*"), recursive=True)
              if f not in before and os.path.isfile(f)]
     if not after:
+        # Debug: gallery-dl ne kya kaha? (user ke logs me nazar aayega)
+        dbg_out = (p.stdout.strip() or "")[:500]
+        dbg_err = (p.stderr.strip() or "")[:500]
+        print(f"[GDL-DEBUG] url={post_url} rc={p.returncode} stdout={dbg_out!r} stderr={dbg_err!r}", flush=True)
         return folder, post_url
     after.sort(key=lambda f: (os.path.getsize(f), os.path.getmtime(f)), reverse=True)
     return after[0], os.path.basename(after[0])
