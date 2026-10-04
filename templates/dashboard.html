@@ -250,7 +250,7 @@ tr:last-child td{border-bottom:0}
           <a class="icon-btn" href="/check/{{ p.id }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 4v6h-6"/><path d="M20.5 15a9 9 0 1 1-2-9.4L23 10"/></svg>{{ t('check') }}</a>
           {% if p.status=='paused' %}<a class="icon-btn" href="/resume/{{ p.id }}">▶ {{ t('resume') }}</a>{% else %}<a class="icon-btn" href="/pause/{{ p.id }}">⏸ {{ t('stop') }}</a>{% endif %}
           <a class="icon-btn" href="/edit/{{ p.id }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>{{ t('edit') }}</a>
-          <a class="icon-btn danger" href="javascript:void(0)" onclick="ajaxDelete({{ p.id }}, '{{ p.name|replace(\"'\", \"\\\\'\") }}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>{{ t('delete') }}</a>
+          <a class="icon-btn danger" href="javascript:void(0)" onclick="ajaxDelete({{ p.id }})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>{{ t('delete') }}</a>
         </div></td>
       </tr>
       {% endfor %}
@@ -374,11 +374,12 @@ tr:last-child td{border-bottom:0}
   }
   window.prosGo=function(p){ curPage=p; renderPros(); };
   // AJAX single delete — page reload nahi, wahi raho
-  window.ajaxDelete=function(pid, name){
+  window.ajaxDelete=function(pid){
+    var row=document.querySelector('tr[data-pid="'+pid+'"]');
+    var name=row ? (row.querySelector('.pname')||{}).textContent || pid : pid;
     if(!confirm('Delete "'+name+'"?')) return;
     fetch('/api/delete/'+pid,{method:'POST'}).then(function(r){return r.json()}).then(function(d){
       if(d.ok){
-        var row=document.querySelector('tr[data-pid="'+pid+'"]');
         if(row) row.remove();
         updateBulk(); renderPros();
       }
