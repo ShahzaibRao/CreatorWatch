@@ -54,16 +54,31 @@ input:focus,select:focus{border-color:var(--accent)}
 .btn:hover{background:var(--accent-d);color:#fff}
 .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
 .btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
-.twrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse;min-width:760px}
+.twrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;min-width:640px}
+th{font-size:11px;padding:10px 10px}
+td{padding:11px 10px;font-size:13.5px}
+/* Mobile-friendly */
+@media (max-width:768px){
+  .card-h{flex-direction:column;align-items:flex-start}
+  .pros-tools{width:100%;justify-content:stretch}
+  .pros-tools .search-box{flex:1;min-width:0}
+  td{padding:10px 8px;font-size:13px}
+  th{padding:8px;font-size:10.5px}
+  .pfolder{max-width:180px}
+  .act{flex-wrap:wrap}
+  .icon-btn{padding:5px 8px;font-size:12px}
+  .pager button{padding:5px 9px;font-size:12px}
+}
+/* Top buttons: search + check-all ek line me */
+.pros-tools{display:flex;gap:8px;align-items:center;flex-wrap:nowrap}
+.search-box{padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;width:220px;flex-shrink:1}
 th{font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);text-align:left;padding:11px 14px;border-bottom:1px solid var(--border);white-space:nowrap}
 td{padding:13px 14px;border-bottom:1px solid var(--border);font-size:14px;vertical-align:middle}
 tr:last-child td{border-bottom:0}
 .pname{font-weight:700}
 .pfolder{font-size:12px;color:var(--muted);font-family:ui-monospace,Consolas,monospace;word-break:break-all;display:inline-block;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
 /* Prospects: search + pagination + bulk */
-.pros-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.search-box{padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;min-width:200px}
 .pager{display:flex;gap:6px;align-items:center;justify-content:center;padding:14px 0 4px;flex-wrap:wrap}
 .pager button{padding:6px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;cursor:pointer}
 .pager button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
