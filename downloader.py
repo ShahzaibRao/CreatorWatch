@@ -61,6 +61,8 @@ import requests  # noqa: F401
 # modules chahiye. Explicit imports taake PyInstaller inhe EXE me bundle kare —
 # warna `import yt_dlp` fail hota hai ("No module named 'optparse'").
 # (Source mode me system Python me ye pehle se hote hain; sirf frozen EXE ke liye.)
+# NOTE: submodules (html.parser jese) alag se import karne parte hain — sirf
+# top-level (html) bundle hone se kaam nahi chalta.
 import bisect  # noqa: F401
 import calendar  # noqa: F401
 import fileinput  # noqa: F401
@@ -72,8 +74,29 @@ import plistlib  # noqa: F401
 import quopri  # noqa: F401
 import secrets  # noqa: F401
 import shlex  # noqa: F401
+import collections.abc  # noqa: F401
+import concurrent.futures  # noqa: F401
+import email.header  # noqa: F401
+import email.message  # noqa: F401
+import email.utils  # noqa: F401
+import html.entities  # noqa: F401
+import html.parser  # noqa: F401
+import http.client  # noqa: F401
+import http.cookiejar  # noqa: F401
+import http.cookies  # noqa: F401
+import http.server  # noqa: F401
+import importlib.abc  # noqa: F401
+import importlib.machinery  # noqa: F401
+import importlib.resources  # noqa: F401
+import importlib.util  # noqa: F401
+import urllib.error  # noqa: F401
+import urllib.parse  # noqa: F401
+import urllib.request  # noqa: F401
+import urllib.response  # noqa: F401
+import xml.etree.ElementTree  # noqa: F401
 try:
     import msvcrt  # noqa: F401  (Windows-only)
+    import ctypes.wintypes  # noqa: F401  (Windows-only)
 except ImportError:
     pass
 try:
