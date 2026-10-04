@@ -764,26 +764,40 @@ def tw_fetch(profile_url: str, limit: int = 10):
     return entries
 
 def ig_download(post_url: str, folder: str, progress=None):
-    """Instagram/X post download gallery-dl se. Returns (filepath, title)."""
+    """Instagram/X post download gallery-dl Python API se (sys.argv ke bajaye — zombie bug ka asli hal). Returns (filepath, title)."""
     import glob
+    from gallery_dl import job as gdl_job
+    import gallery_dl.config as gdl_config
+
     ck = os.path.join(DATA_DIR, "cookies.txt")
     os.makedirs(folder, exist_ok=True)
     if progress:
         progress({"pct": None, "title": "gallery-dl download..."})
     before = {f for f in glob.glob(os.path.join(folder, "**", "*"), recursive=True)}
-    p = _gdl(["--cookies", ck, "-d", folder, "--no-mtime", post_url], timeout=600)
-    if p.returncode != 0:
-        raise Exception((p.stderr.strip() or "gallery-dl download failed")[:250])
+
+    # gallery-dl ka Python API — sys.argv ko chhute hi nahi, is liye zombie/corrupt ka sawal hi nahi.
+    # Config global hai, is liye lock me set karo.
+    with _gdl_lock:
+        gdl_config.clear()
+        gdl_config.set((), "base-directory", folder)
+        gdl_config.set((), "directory", [])
+        gdl_config.set((), "no-mtime", True)
+        if os.path.exists(ck):
+            gdl_config.set(("extractor",), "cookies", ck)
+        try:
+            j = gdl_job.DownloadJob(post_url)
+            j.run()
+        except SystemExit as e:
+            # gallery-dl SystemExit(0) karta hai jab kuch download na ho
+            if e.code not in (0, None):
+                raise Exception(f"gallery-dl exit code {e.code}")
+        except Exception as e:
+            raise Exception(f"gallery-dl error: {str(e)[:200]}")
+
     after = [f for f in glob.glob(os.path.join(folder, "**", "*"), recursive=True)
              if f not in before and os.path.isfile(f)]
     if not after:
-        # Debug: gallery-dl ne kya kaha? Error me shamil taake user ko nazar aaye.
-        dbg_out = (p.stdout.strip() or "")[:300]
-        dbg_err = (p.stderr.strip() or "")[:300]
-        print(f"[GDL-DEBUG] url={post_url} rc={p.returncode} stdout={dbg_out!r} stderr={dbg_err!r}", flush=True)
-        # Agar stdout me listing format hai (zombie bug), to wazeh error do
-        if "::" in dbg_out and "http" not in dbg_out.lower():
-            raise Exception(f"gallery-dl ne download ke bajaye listing di — sys.argv corrupt. stdout={dbg_out[:200]}")
+        print(f"[GDL-API] url={post_url} no files downloaded", flush=True)
         return folder, post_url
     after.sort(key=lambda f: (os.path.getsize(f), os.path.getmtime(f)), reverse=True)
     return after[0], os.path.basename(after[0])
