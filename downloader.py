@@ -2,6 +2,10 @@ import os
 import re
 import sys as _sys
 import threading as _th
+
+# gallery-dl in-process execution ke liye lock — gallery_dl.main() thread-safe
+# nahi hai (sys.argv + internal generators). Ek waqt me sirf ek chale.
+_gdl_lock = _th.Lock()
 from paths import app_dir, ensure_pylibs, user_data_dir
 ensure_pylibs()
 from database import video_exists, add_video, update_last_check
@@ -636,47 +640,51 @@ def _gdl(args, timeout=300):
         # sys.argv se args parhta hai.
         # Thread + timeout: gallery-dl network par atak jaye (x.com slow/hang)
         # to worker hamesha ke liye block na ho.
+        # LOCK: gallery_dl.main() thread-safe nahi (sys.argv + internal
+        # generators share hote hain) — ek waqt me sirf ek chale, warna
+        # "generator already executing" ya ghalat args ka masla.
         import io, threading
         import gallery_dl
-        out_buf, err_buf = io.StringIO(), io.StringIO()
-        rc = [1]
-        old_argv = sys.argv
-        sys.argv = ["gallery-dl"] + list(args)
-        def _run():
-            # buffer isi (worker) thread se register — thread-local hai
-            _proxy_stdout.register(out_buf)
-            _proxy_stderr.register(err_buf)
-            try:
+        with _gdl_lock:
+            out_buf, err_buf = io.StringIO(), io.StringIO()
+            rc = [1]
+            old_argv = sys.argv
+            sys.argv = ["gallery-dl"] + list(args)
+            def _run():
+                # buffer isi (worker) thread se register — thread-local hai
+                _proxy_stdout.register(out_buf)
+                _proxy_stderr.register(err_buf)
                 try:
-                    rc[0] = gallery_dl.main() or 0
-                except SystemExit as e:
                     try:
-                        rc[0] = int(e.code or 0)
-                    except (TypeError, ValueError):
+                        rc[0] = gallery_dl.main() or 0
+                    except SystemExit as e:
+                        try:
+                            rc[0] = int(e.code or 0)
+                        except (TypeError, ValueError):
+                            rc[0] = 1
+                    except Exception as e:
+                        err_buf.write(f"gallery-dl error: {e}")
                         rc[0] = 1
-                except Exception as e:
-                    err_buf.write(f"gallery-dl error: {e}")
-                    rc[0] = 1
-            finally:
-                sys.argv = old_argv
+                finally:
+                    sys.argv = old_argv
+                    _proxy_stdout.release()
+                    _proxy_stderr.release()
+            t = threading.Thread(target=_run, daemon=True)
+            t.start()
+            t.join(timeout)
+            class R:
+                pass
+            r = R()
+            if t.is_alive():
+                # worker atak gaya — uska buffer release ho chuka hoga ya hoga;
+                # main thread ke prints mehfooz (proxy thread-local hai)
                 _proxy_stdout.release()
                 _proxy_stderr.release()
-        t = threading.Thread(target=_run, daemon=True)
-        t.start()
-        t.join(timeout)
-        class R:
-            pass
-        r = R()
-        if t.is_alive():
-            # worker atak gaya — uska buffer release ho chuka hoga ya hoga;
-            # main thread ke prints mehfooz (proxy thread-local hai)
-            _proxy_stdout.release()
-            _proxy_stderr.release()
-            r.returncode, r.stdout = 1, out_buf.getvalue()
-            r.stderr = (err_buf.getvalue() + f"\ngallery-dl timeout ({timeout}s) — x.com/network atak gaya").strip()
-        else:
-            r.returncode, r.stdout, r.stderr = rc[0], out_buf.getvalue(), err_buf.getvalue()
-        return r
+                r.returncode, r.stdout = 1, out_buf.getvalue()
+                r.stderr = (err_buf.getvalue() + f"\ngallery-dl timeout ({timeout}s) — x.com/network atak gaya").strip()
+            else:
+                r.returncode, r.stdout, r.stderr = rc[0], out_buf.getvalue(), err_buf.getvalue()
+            return r
     cmd = [sys.executable, "-m", "gallery_dl"] + args
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
                           cwd=BASE_DIR, env=_env_with_ffmpeg())
