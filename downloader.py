@@ -57,6 +57,31 @@ _sys.stdout, _sys.stderr = _proxy_stdout, _proxy_stderr
 # (PyInstaller isi import ki wajah se requests bundle karta hai.)
 import requests  # noqa: F401
 
+# yt-dlp (tools/pylibs se, PyInstaller me --exclude-module hai) ko ye stdlib
+# modules chahiye. Explicit imports taake PyInstaller inhe EXE me bundle kare —
+# warna `import yt_dlp` fail hota hai ("No module named 'optparse'").
+# (Source mode me system Python me ye pehle se hote hain; sirf frozen EXE ke liye.)
+import bisect  # noqa: F401
+import calendar  # noqa: F401
+import fileinput  # noqa: F401
+import getpass  # noqa: F401
+import heapq  # noqa: F401
+import netrc  # noqa: F401
+import optparse  # noqa: F401
+import plistlib  # noqa: F401
+import quopri  # noqa: F401
+import secrets  # noqa: F401
+import shlex  # noqa: F401
+try:
+    import msvcrt  # noqa: F401  (Windows-only)
+except ImportError:
+    pass
+try:
+    import fcntl  # noqa: F401  (Unix-only)
+    import pty  # noqa: F401  (Unix-only)
+except ImportError:
+    pass
+
 def _yt_dlp():
     """Lazy import taake EXE lightweight rahe — engines Updates page se install hote hain."""
     try:
