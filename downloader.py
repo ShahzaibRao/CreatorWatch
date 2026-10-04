@@ -6,6 +6,9 @@ import threading as _th
 # gallery-dl in-process execution ke liye lock — gallery_dl.main() thread-safe
 # nahi hai (sys.argv + internal generators). Ek waqt me sirf ek chale.
 _gdl_lock = _th.Lock()
+# Generation counter: timeout wala zombie worker purane sys.argv ko restore
+# karke naye call ke args corrupt na kare. Sirf latest generation restore karegi.
+_gdl_generation = [0]
 from paths import app_dir, ensure_pylibs, user_data_dir
 ensure_pylibs()
 from database import video_exists, add_video, update_last_check
@@ -646,6 +649,8 @@ def _gdl(args, timeout=300):
         import io, threading
         import gallery_dl
         with _gdl_lock:
+            _gdl_generation[0] += 1
+            my_gen = _gdl_generation[0]
             out_buf, err_buf = io.StringIO(), io.StringIO()
             rc = [1]
             old_argv = sys.argv
@@ -666,7 +671,11 @@ def _gdl(args, timeout=300):
                         err_buf.write(f"gallery-dl error: {e}")
                         rc[0] = 1
                 finally:
-                    sys.argv = old_argv
+                    # Sirf latest generation sys.argv restore kare — zombie
+                    # worker (timeout wala) purane args se naye call ko
+                    # corrupt na kare.
+                    if _gdl_generation[0] == my_gen:
+                        sys.argv = old_argv
                     _proxy_stdout.release()
                     _proxy_stderr.release()
             t = threading.Thread(target=_run, daemon=True)
@@ -675,6 +684,10 @@ def _gdl(args, timeout=300):
             class R:
                 pass
             r = R()
+            # Main thread me sys.argv restore — worker ne kiya ho ya na kiya ho
+            # (zombie case me generation check usko rokegi, yahan hum restore karenge)
+            if _gdl_generation[0] == my_gen:
+                sys.argv = old_argv
             if t.is_alive():
                 # worker atak gaya — uska buffer release ho chuka hoga ya hoga;
                 # main thread ke prints mehfooz (proxy thread-local hai)
