@@ -847,9 +847,16 @@ def _tw_download_ytdlp(tw_url: str, folder: str, quality: str = "720p", progress
 
 def download_one(video_url: str, folder: str, quality: str = "720p", platform: str = "youtube", progress=None, method: str = "auto"):
     """Download single video, return (filepath, title). YouTube: auto = direct, wall par PO-token retry."""
-    # Instagram/Twitter: yt-dlp se (gallery-dl in-process download me masla karta hai).
-    # Listings (tw_fetch/ig_fetch) gallery-dl se hi hongi — wo kaam karti hain.
     if platform in ("instagram", "twitter"):
+        # Pehle gallery-dl (images + videos dono), fail ho to yt-dlp fallback (videos ke liye)
+        try:
+            fp, title = ig_download(video_url, folder, progress)
+            # gallery-dl ne file banayi? (folder wapas aaya to koi file nahi bani)
+            if fp != folder and os.path.exists(fp):
+                return fp, title
+        except Exception as e:
+            print(f"[SOCIAL] gallery-dl fail, yt-dlp try: {e}", flush=True)
+        # Fallback: yt-dlp (videos ke liye behtar)
         return _social_download_ytdlp(video_url, folder, quality, progress, platform)
     if platform == "tiktok":
         fmt = "best/b"  # tiktok par single-file best (height filter support nahi)
