@@ -665,6 +665,27 @@ def api_delete_bulk():
             pass
     return {"ok": True, "deleted": deleted}
 
+@app.route("/open_folder/<int:pid>")
+def open_folder(pid):
+    """Prospect ka download folder file explorer me kholo."""
+    import subprocess
+    p = db.get_profile(pid)
+    if not p:
+        return redirect(url_for("dashboard"))
+    folder = p.get("folder") or ""
+    if not folder or not os.path.isdir(folder):
+        return redirect(url_for("dashboard", msg="Folder nahi mila", ok="0"))
+    try:
+        if sys.platform == "win32":
+            os.startfile(folder)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", folder])
+        else:
+            subprocess.Popen(["xdg-open", folder])
+    except Exception:
+        pass
+    return redirect(url_for("dashboard"))
+
 @app.route("/pause/<int:pid>")
 def pause(pid):
     db.set_status(pid, "paused")
