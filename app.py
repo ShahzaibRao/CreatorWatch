@@ -1020,34 +1020,35 @@ def _download_update(rel):
         return False, f"Download fail: {e}"
 
 def _restart_app():
-    """App restart: Windows = batch (PID wait + relaunch + log); Linux = relaunch binary/script."""
+    """App restart: Windows = hidden PowerShell (3s wait + relaunch); Linux = relaunch binary/script."""
     import subprocess
     import sys as _sys
     try:
         if os.name == "nt":
             exe = os.path.abspath(_sys.executable)
-            pid = os.getpid()
             adir = app_dir()
-            bat = os.path.join(adir, "_cw_restart.bat")
             log = os.path.join(adir, "_cw_restart.log")
-            argstr = " ".join(f'"{a}"' for a in _sys.argv[1:])
-            # Purana tareeqa (fixed 6s wait) kabhi kabhi relaunch nahi karta tha:
-            # ab apne PID ke marne ka WAIT karo, phir launch — aur har step log me.
-            with open(bat, "w") as f:
-                f.write("@echo off\n")
-                f.write(f'echo [%date% %time%] restart: PID {pid} ka wait >> "{log}"\n')
-                f.write(":waitloop\n")
-                f.write(f'tasklist /FI "PID eq {pid}" 2>nul | find "{pid}" >nul\n')
-                f.write("if not errorlevel 1 ( timeout /t 1 /nobreak >nul & goto waitloop )\n")
-                f.write(f'echo [%date% %time%] launching "{exe}" >> "{log}"\n')
-                f.write(f'start "" "{exe}" {argstr}\n')
-                f.write(f'echo [%date% %time%] start exit=%errorlevel% >> "{log}"\n')
-                f.write('del "%~f0"\n')
-            flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-            subprocess.Popen(["cmd", "/c", bat], cwd=adir,
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                             stdin=subprocess.DEVNULL, close_fds=True,
-                             creationflags=flags)
+            # Purana _cw_restart.bat (PID-wait loop wala) agar reh gaya ho to saaf karo —
+            # wo visible cmd window khol kar `find` par atak sakta tha.
+            try:
+                os.remove(os.path.join(adir, "_cw_restart.bat"))
+            except OSError:
+                pass
+            # Hidden PowerShell: 3s wait (purana process os._exit se foran marta hai,
+            # port same waqt free), phir relaunch. Na koi visible window, na koi loop.
+            ps = (
+                "$ts=Get-Date -Format 'yyyy-MM-dd HH:mm:ss'; "
+                f"\"$ts restart: wait\" | Out-File -Append -FilePath \"{log}\"; "
+                "Start-Sleep -Seconds 3; "
+                "$ts2=Get-Date -Format 'yyyy-MM-dd HH:mm:ss'; "
+                f"\"$ts2 launching\" | Out-File -Append -FilePath \"{log}\"; "
+                f"Start-Process -FilePath \"{exe}\";"
+            )
+            subprocess.Popen(
+                ["powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", ps],
+                cwd=adir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL, close_fds=True,
+            )
         else:
             exe = os.path.abspath(_sys.executable)
             subprocess.Popen([exe] + [a for a in _sys.argv[1:] if a != "--app"] + ["--app"],
