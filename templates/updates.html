@@ -77,7 +77,9 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 <div class="card"><div class="card-h"><h2>Download engines</h2></div><div class="card-b">
 <p><small>yt-dlp / gallery-dl purane hon to sites fail hoti hain — inhe alag se update rakho taake app smoothly chalti rahe.</small></p>
 <div class="kv"><span>yt-dlp</span><b>{{ engines.get('yt-dlp','?') }}{% if external.get('yt-dlp') %} <span class="pill ok">ext {{ external.get('yt-dlp') }}</span>{% endif %}</b></div>
+{% if engines.get('yt-dlp-error') %}<p><small style="color:#e5484d">Import error: {{ engines.get('yt-dlp-error') }}</small></p>{% endif %}
 <div class="kv"><span>gallery-dl</span><b>{{ engines.get('gallery-dl','?') }}{% if external.get('gallery-dl') %} <span class="pill ok">ext {{ external.get('gallery-dl') }}</span>{% endif %}</b></div>
+{% if engines.get('gallery-dl-error') %}<p><small style="color:#e5484d">Import error: {{ engines.get('gallery-dl-error') }}</small></p>{% endif %}
 <div class="row"><form method="post" onsubmit="return startUpdate('engines', this)"><input type="hidden" name="action" value="engines"><button class="btn" type="submit">{% if frozen and not external %}⬇ Install Required Packages{% else %}⬆ Update Engines{% endif %}</button></form>
 {% if frozen and external %}
 <form method="post"><input type="hidden" name="action" value="restart_app"><button class="btn ghost" type="submit">🔁 Restart App</button></form>

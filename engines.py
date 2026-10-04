@@ -33,13 +33,15 @@ def active_versions():
     try:
         from yt_dlp.version import __version__ as yv
         out["yt-dlp"] = yv
-    except Exception:
+    except Exception as e:
         out["yt-dlp"] = "?"
+        out["yt-dlp-error"] = f"{type(e).__name__}: {e}"[:300]
     try:
         import gallery_dl
         out["gallery-dl"] = getattr(gallery_dl, "__version__", "?")
-    except Exception:
+    except Exception as e:
         out["gallery-dl"] = "?"
+        out["gallery-dl-error"] = f"{type(e).__name__}: {e}"[:300]
     return out
 
 
