@@ -786,7 +786,6 @@ def snap_fetch(profile_url: str, limit: int = 10):
             extr = gdl_extractor.find(url)
             if not extr:
                 raise Exception(f"URL support nahi: {url}")
-            extr = extr(url)
             for msg, surl, kw in extr:
                 # msg: 0=directory, 1=url, 2=queue
                 if msg != 1 or not surl or surl in seen:
