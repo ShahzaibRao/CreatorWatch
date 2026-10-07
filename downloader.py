@@ -768,48 +768,106 @@ def tw_fetch(profile_url: str, limit: int = 10):
     return entries
 
 def snap_fetch(profile_url: str, limit: int = 10):
-    """Snapchat listing gallery-dl Python API se (stories/spotlights)."""
-    from gallery_dl import extractor as gdl_extractor
-    import gallery_dl.config as gdl_config
+    """Snapchat listing — seedha page ka __NEXT_DATA__ parse (gallery-dl ka
+    extractor purane structure par hai, Snapchat ne {"value":...} hata diya)."""
+    import re, json
 
-    ck = os.path.join(DATA_DIR, "cookies.txt")
     base_url = profile_url.strip().rstrip("/")
-    # gallery-dl pattern: snapchat.com/@user ya snapchat.com/add/user
-    # Stories ke sath spotlights bhi try karo (public content ke liye behtar)
-    urls_to_try = [base_url]
-    if "/spotlights" not in base_url:
-        urls_to_try.append(base_url + "/spotlights")
+    # username nikalo
+    m = re.search(r"snapchat\.com/(?:@|add/)([^/?#]+)", base_url, re.I)
+    if not m:
+        raise Exception(f"Snapchat URL samajh nahi aayi: {base_url}")
+    user = m.group(1)
+    page_url = f"https://www.snapchat.com/@{user}"
+
+    req = urllib.request.Request(page_url, headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+    })
+    # cookies lagao agar hain
+    ck = os.path.join(DATA_DIR, "cookies.txt")
+    if os.path.exists(ck):
+        try:
+            import http.cookiejar
+            jar = http.cookiejar.MozillaCookieJar(ck)
+            jar.load(ignore_discard=True, ignore_expires=True)
+            opener = urllib.request.build_opener(
+                urllib.request.HTTPCookieProcessor(jar))
+            req.add_header("Cookie", "; ".join(
+                f"{c.name}={c.value}" for c in jar))
+        except Exception:
+            pass
+
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+    except Exception as e:
+        raise Exception(f"Snapchat page nahi khuli [{type(e).__name__}: {e}]")
+
+    m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>',
+                  html, re.DOTALL)
+    if not m:
+        raise Exception("Snapchat page ka data nahi mila — page structure badal gayi?")
+    try:
+        pp = json.loads(m.group(1))["props"]["pageProps"]
+    except Exception as e:
+        raise Exception(f"Snapchat JSON parse fail: {e}")
+
+    def _val(x):
+        # {"value": ...} ya direct value dono handle karo
+        return x.get("value", x) if isinstance(x, dict) else x
 
     entries, seen = [], set()
-    with _gdl_lock:
-        gdl_config.clear()
-        gdl_config.set((), "no-mtime", True)
-        if os.path.exists(ck):
-            gdl_config.set(("extractor",), "cookies", ck)
-        for url in urls_to_try:
+    for key in ("spotlightHighlights", "curatedHighlights"):
+        for hl in pp.get(key) or []:
+            for snap in hl.get("snapList") or []:
+                urls = snap.get("snapUrls") or {}
+                media = urls.get("mediaUrl")
+                if not media or media in seen:
+                    continue
+                seen.add(media)
+                sid = str(_val(snap.get("snapId")) or "")[:60] or media[-30:]
+                title = str(_val(hl.get("storyTitle")) or _val(snap.get("snapTitle")) or "")[:80] or sid
+                # timestamp
+                entries.append({"id": sid, "title": title, "url": media})
+                if len(entries) >= limit:
+                    break
             if len(entries) >= limit:
                 break
-            try:
-                extr = gdl_extractor.find(url)
-                if not extr:
-                    continue
-                for msg, surl, kw in extr:
-                    # msg: 0=directory, 1=url, 2=queue
-                    if msg != 1 or not surl or surl in seen:
-                        continue
-                    seen.add(surl)
-                    kw = kw or {}
-                    sid = str(kw.get("id", "") or kw.get("file_id", ""))[:60] or surl[-30:]
-                    title = str(kw.get("title", "") or "")[:80] or sid
-                    entries.append({"id": sid, "title": title, "url": surl})
-                    if len(entries) >= limit:
-                        break
-            except Exception as e:
-                print(f"[SNAP] {url} fail: {type(e).__name__}: {e}", flush=True)
-                continue
+        if len(entries) >= limit:
+            break
+
     if not entries:
-        raise Exception("koi snap nahi mili — profile public hai? Snapchat login cookies import karo (/cookies)")
+        raise Exception("koi snap nahi mili — profile me public Spotlight/Stories nahi?")
     return entries
+
+def snap_download(media_url: str, folder: str, title: str = ""):
+    """Snapchat direct media URL download (cf-st.sc-cdn.net)."""
+    import re
+    os.makedirs(folder, exist_ok=True)
+    # extension guess karo
+    ext = "mp4"
+    if ".jpg" in media_url or ".jpeg" in media_url or ".png" in media_url:
+        ext = "jpg"
+    safe = re.sub(r'[\\/*?:"<>|]', "_", (title or "snap")[:60]).strip() or "snap"
+    # unique filename
+    base = os.path.join(folder, f"{safe}.{ext}")
+    fp, i = base, 1
+    while os.path.exists(fp):
+        fp = os.path.join(folder, f"{safe}_{i}.{ext}")
+        i += 1
+    req = urllib.request.Request(media_url, headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+        "Referer": "https://www.snapchat.com/",
+    })
+    with urllib.request.urlopen(req, timeout=120) as r, open(fp, "wb") as f:
+        while True:
+            chunk = r.read(65536)
+            if not chunk:
+                break
+            f.write(chunk)
+    return fp, title
 
 def ig_download(post_url: str, folder: str, progress=None):
     """Instagram/X post download gallery-dl Python API se (sys.argv ke bajaye — zombie bug ka asli hal). Returns (filepath, title)."""
@@ -909,15 +967,14 @@ def _tw_download_ytdlp(tw_url: str, folder: str, quality: str = "720p", progress
     """Twitter video yt-dlp se. Returns (filepath, title)."""
     return _social_download_ytdlp(tw_url, folder, quality, progress, "twitter")
 
-def download_one(video_url: str, folder: str, quality: str = "720p", platform: str = "youtube", progress=None, method: str = "auto"):
+def download_one(video_url: str, folder: str, quality: str = "720p", platform: str = "youtube", progress=None, method: str = "auto", title: str = ""):
     """Download single video, return (filepath, title). YouTube: auto = direct, wall par PO-token retry."""
     if platform == "snapchat":
-        # Snapchat: gallery-dl direct (stories/spotlights — images + videos).
-        # yt-dlp sirf spotlight URLs support karta hai, user profiles nahi.
-        fp, title = ig_download(video_url, folder, progress)
-        if fp == folder:
-            raise Exception("gallery-dl se koi file nahi mili — snap expire ho gaya ya private hai")
-        return fp, title
+        # Snapchat: direct media URLs (gallery-dl ka extractor purana hai)
+        fp, t = snap_download(video_url, folder, title)
+        if not os.path.exists(fp):
+            raise Exception("Snapchat download fail — URL expire ho gayi?")
+        return fp, t
     if platform in ("instagram", "twitter"):
         # Mechanism: pehle yt-dlp (videos ke liye behtar), agar "no video" error
         # aaye to gallery-dl (images ke liye). Dono ka faida.
@@ -1036,7 +1093,7 @@ def first_run(profile: dict, progress=None):
                 progress({"stage": "downloading", "done": 0, "total": 1, "pct": 0, "title": latest["title"][:60]})
             fp, title = download_one(latest["url"], folder, quality, platform,
                                      progress=(lambda u: progress({**{"stage": "downloading", "done": 0, "total": 1}, **u})) if progress else None,
-                                     method=method)
+                                     method=method, title=latest.get("title", ""))
             if fp == folder:
                 # gallery-dl ne koi file nahi banayi (text-only post ya download fail).
                 # "Seen" mark NA karo — agli bar dobara try hogi. Error me daalo taake user ko pata chale.
@@ -1099,7 +1156,7 @@ def check_profile(profile: dict, progress=None):
                 progress({**base, "pct": 0, "title": e["title"][:60]})
             fp, title = download_one(e["url"], folder, quality, platform,
                                      progress=(lambda u, b=base: progress({**b, **u})) if progress else None,
-                                     method=method)
+                                     method=method, title=e.get("title", ""))
             if fp == folder:
                 # text-only post (koi media nahi) — skip mark taake retry loop na ho
                 from database import mark_seen
