@@ -773,8 +773,12 @@ def snap_fetch(profile_url: str, limit: int = 10):
     import gallery_dl.config as gdl_config
 
     ck = os.path.join(DATA_DIR, "cookies.txt")
-    url = profile_url.strip().rstrip("/")
+    base_url = profile_url.strip().rstrip("/")
     # gallery-dl pattern: snapchat.com/@user ya snapchat.com/add/user
+    # Stories ke sath spotlights bhi try karo (public content ke liye behtar)
+    urls_to_try = [base_url]
+    if "/spotlights" not in base_url:
+        urls_to_try.append(base_url + "/spotlights")
 
     entries, seen = [], set()
     with _gdl_lock:
@@ -782,25 +786,29 @@ def snap_fetch(profile_url: str, limit: int = 10):
         gdl_config.set((), "no-mtime", True)
         if os.path.exists(ck):
             gdl_config.set(("extractor",), "cookies", ck)
-        try:
-            extr = gdl_extractor.find(url)
-            if not extr:
-                raise Exception(f"URL support nahi: {url}")
-            for msg, surl, kw in extr:
-                # msg: 0=directory, 1=url, 2=queue
-                if msg != 1 or not surl or surl in seen:
+        for url in urls_to_try:
+            if len(entries) >= limit:
+                break
+            try:
+                extr = gdl_extractor.find(url)
+                if not extr:
                     continue
-                seen.add(surl)
-                kw = kw or {}
-                sid = str(kw.get("id", "") or kw.get("file_id", ""))[:60] or surl[-30:]
-                title = str(kw.get("title", "") or "")[:80] or sid
-                entries.append({"id": sid, "title": title, "url": surl})
-                if len(entries) >= limit:
-                    break
-        except Exception as e:
-            raise Exception(f"Snapchat listing fail [{type(e).__name__}: {e}] — profile public hai? cookies check karo")
+                for msg, surl, kw in extr:
+                    # msg: 0=directory, 1=url, 2=queue
+                    if msg != 1 or not surl or surl in seen:
+                        continue
+                    seen.add(surl)
+                    kw = kw or {}
+                    sid = str(kw.get("id", "") or kw.get("file_id", ""))[:60] or surl[-30:]
+                    title = str(kw.get("title", "") or "")[:80] or sid
+                    entries.append({"id": sid, "title": title, "url": surl})
+                    if len(entries) >= limit:
+                        break
+            except Exception as e:
+                print(f"[SNAP] {url} fail: {type(e).__name__}: {e}", flush=True)
+                continue
     if not entries:
-        raise Exception("koi snap nahi mili — profile public hai? cookies check karo")
+        raise Exception("koi snap nahi mili — profile public hai? Snapchat login cookies import karo (/cookies)")
     return entries
 
 def ig_download(post_url: str, folder: str, progress=None):
