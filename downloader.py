@@ -134,6 +134,8 @@ def detect_platform(url: str) -> str:
         return "instagram"
     if "twitter.com" in u or "x.com" in u:
         return "twitter"
+    if "snapchat.com" in u:
+        return "snapchat"
     return "unknown"
 
 def normalize_profile_url(url: str) -> str:
@@ -491,6 +493,8 @@ def fetch_latest_entries(profile_url: str, scope: str = "both"):
         return ig_fetch(profile_url, 10)  # yt-dlp insta broken -> gallery-dl
     if plat == "twitter":
         return tw_fetch(profile_url, 10)  # is yt-dlp me x.com support nahi -> gallery-dl
+    if plat == "snapchat":
+        return snap_fetch(profile_url, 10)  # Snapchat -> gallery-dl (stories/spotlights)
     if scope not in ("both", "videos", "shorts"):
         scope = "both"
     if plat == "youtube":
@@ -763,6 +767,38 @@ def tw_fetch(profile_url: str, limit: int = 10):
         raise Exception(f"koi tweet nahi mili [{dbg}] — x.com login cookies check karo, dobara import karo")
     return entries
 
+def snap_fetch(profile_url: str, limit: int = 10):
+    """Snapchat listing gallery-dl se (stories/spotlights)."""
+    ck = os.path.join(DATA_DIR, "cookies.txt")
+    # Snapchat public profiles bina login ke bhi kaam kar sakte hain, lekin
+    # cookies hon to behtar (private/age-restricted content ke liye)
+    url = profile_url.strip().rstrip("/")
+    # gallery-dl pattern: snapchat.com/@user ya snapchat.com/add/user
+    args = ["--range", f"1-{limit * 2}", "--no-mtime",
+            "--print", "{id} :: {url} :: {date} :: {title}", url]
+    if os.path.exists(ck):
+        args = ["--cookies", ck] + args
+    p = _gdl(args)
+    if p.returncode != 0:
+        raise Exception((p.stderr.strip() or "gallery-dl failed")[:250])
+    entries, seen = [], set()
+    for line in p.stdout.splitlines():
+        parts = line.split(" :: ")
+        if len(parts) < 2 or not parts[0].strip() or not parts[1].strip():
+            continue
+        sid, surl = parts[0].strip(), parts[1].strip()
+        if surl in seen:
+            continue
+        seen.add(surl)
+        title = (parts[3] if len(parts) > 3 else "").strip()[:80] or sid
+        entries.append({"id": sid, "title": title, "url": surl})
+        if len(entries) >= limit:
+            break
+    if not entries:
+        dbg = (p.stderr.strip() or p.stdout.strip())[:250]
+        raise Exception(f"koi snap nahi mili [{dbg}] — profile public hai? cookies check karo")
+    return entries
+
 def ig_download(post_url: str, folder: str, progress=None):
     """Instagram/X post download gallery-dl Python API se (sys.argv ke bajaye — zombie bug ka asli hal). Returns (filepath, title)."""
     import glob
@@ -863,6 +899,13 @@ def _tw_download_ytdlp(tw_url: str, folder: str, quality: str = "720p", progress
 
 def download_one(video_url: str, folder: str, quality: str = "720p", platform: str = "youtube", progress=None, method: str = "auto"):
     """Download single video, return (filepath, title). YouTube: auto = direct, wall par PO-token retry."""
+    if platform == "snapchat":
+        # Snapchat: gallery-dl direct (stories/spotlights — images + videos).
+        # yt-dlp sirf spotlight URLs support karta hai, user profiles nahi.
+        fp, title = ig_download(video_url, folder, progress)
+        if fp == folder:
+            raise Exception("gallery-dl se koi file nahi mili — snap expire ho gaya ya private hai")
+        return fp, title
     if platform in ("instagram", "twitter"):
         # Mechanism: pehle yt-dlp (videos ke liye behtar), agar "no video" error
         # aaye to gallery-dl (images ke liye). Dono ka faida.

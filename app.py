@@ -141,6 +141,7 @@ SITE_RULES = {
     "twitter": ("X (Twitter)", ("x.com", "twitter.com"), ("auth_token",), True),
     "youtube": ("YouTube", ("youtube.com",), ("SID",), False),
     "tiktok": ("TikTok", ("tiktok.com",), (), False),
+    "snapchat": ("Snapchat", ("snapchat.com",), (), False),
 }
 
 def _site_cookie_status(lines):

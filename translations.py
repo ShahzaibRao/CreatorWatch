@@ -4,7 +4,7 @@ LANGS = {"en": "English", "ur": "Roman Urdu", "es": "Español", "zh": "中文"}
 
 STRINGS = {
 "en": {
-"app_name": "CreatorWatch", "tagline": "YouTube · Instagram · X · TikTok — auto-track & download",
+"app_name": "CreatorWatch", "tagline": "YouTube · Instagram · X · TikTok · Snapchat — auto-track & download",
 "light": "Light", "dark": "Dark", "back_dash": "Dashboard",
 "stat_prospects": "Prospects", "stat_videos": "Videos", "stat_storage": "Storage", "stat_autocheck": "Auto-check",
 "every_minute": "Every minute",
@@ -27,7 +27,7 @@ STRINGS = {
 "bell_title": "New downloads", "bell_read": "Mark all read", "bell_empty": "No new downloads.",
 # cookies page
 "ck_title": "Cookies Manager",
-"ck_sub": "Instagram / X / TikTok / YouTube — import login cookies for sites that need them.",
+"ck_sub": "Instagram / X / TikTok / YouTube / Snapchat — import login cookies for sites that need them.",
 "ck_sites_title": "Which sites have cookies?", "ck_status": "Status",
 "ck_file": "File", "ck_active": "Active", "ck_notinstalled": "Not installed", "ck_no_cookies": "No cookies yet — paste below to import.",
 "ck_format": "Format", "ck_format_ok": "Netscape OK", "ck_format_bad": "Wrong format",
@@ -58,7 +58,7 @@ STRINGS = {
 "e_quality": "Video quality", "e_save": "Save changes",
 },
 "ur": {
-"app_name": "CreatorWatch", "tagline": "YouTube · Instagram · X · TikTok — auto-track aur download",
+"app_name": "CreatorWatch", "tagline": "YouTube · Instagram · X · TikTok · Snapchat — auto-track aur download",
 "light": "Light", "dark": "Dark", "back_dash": "Dashboard",
 "stat_prospects": "Prospects", "stat_videos": "Videos", "stat_storage": "Storage", "stat_autocheck": "Auto-check",
 "every_minute": "Har minute",
@@ -81,7 +81,7 @@ STRINGS = {
 "bell_title": "Nayi downloads", "bell_read": "Sab read mark karo", "bell_empty": "Koi nayi download nahi.",
 # cookies page
 "ck_title": "Cookies Manager",
-"ck_sub": "Instagram / X / TikTok / YouTube — jis site pe login chahiye, uski cookies yahan import karo.",
+"ck_sub": "Instagram / X / TikTok / YouTube / Snapchat — jis site pe login chahiye, uski cookies yahan import karo.",
 "ck_sites_title": "Kin sites ki cookies hain?", "ck_status": "Status",
 "ck_file": "File", "ck_active": "Active", "ck_notinstalled": "Nahi hain", "ck_no_cookies": "Abhi koi cookies nahi — neeche paste karke import karo.",
 "ck_format": "Format", "ck_format_ok": "Netscape OK", "ck_format_bad": "Ghalat format",
@@ -112,7 +112,7 @@ STRINGS = {
 "e_quality": "Video quality", "e_save": "Save changes",
 },
 "es": {
-"app_name": "CreatorWatch", "tagline": "YouTube · Instagram · X · TikTok — seguimiento y descarga automática",
+"app_name": "CreatorWatch", "tagline": "YouTube · Instagram · X · TikTok · Snapchat — seguimiento y descarga automática",
 "light": "Claro", "dark": "Oscuro", "back_dash": "Panel",
 "stat_prospects": "Prospectos", "stat_videos": "Videos", "stat_storage": "Almacenamiento", "stat_autocheck": "Auto-chequeo",
 "every_minute": "Cada minuto",
@@ -135,7 +135,7 @@ STRINGS = {
 "bell_title": "Descargas nuevas", "bell_read": "Marcar todo como leído", "bell_empty": "Sin descargas nuevas.",
 # cookies page
 "ck_title": "Gestor de Cookies",
-"ck_sub": "Instagram / X / TikTok / YouTube — importa las cookies de los sitios que las necesiten.",
+"ck_sub": "Instagram / X / TikTok / YouTube / Snapchat — importa las cookies de los sitios que las necesiten.",
 "ck_sites_title": "¿Qué sitios tienen cookies?", "ck_status": "Estado",
 "ck_file": "Archivo", "ck_active": "Activo", "ck_notinstalled": "No instaladas", "ck_no_cookies": "Sin cookies — pega abajo para importar.",
 "ck_format": "Formato", "ck_format_ok": "Netscape OK", "ck_format_bad": "Formato incorrecto",
@@ -166,7 +166,7 @@ STRINGS = {
 "e_quality": "Calidad de video", "e_save": "Guardar cambios",
 },
 "zh": {
-"app_name": "CreatorWatch", "tagline": "YouTube · Instagram · X · TikTok — 自动跟踪与下载",
+"app_name": "CreatorWatch", "tagline": "YouTube · Instagram · X · TikTok · Snapchat — 自动跟踪与下载",
 "light": "浅色", "dark": "深色", "back_dash": "返回面板",
 "stat_prospects": "关注", "stat_videos": "视频", "stat_storage": "存储", "stat_autocheck": "自动检查",
 "every_minute": "每分钟",
@@ -189,7 +189,7 @@ STRINGS = {
 "bell_title": "新下载", "bell_read": "全部标为已读", "bell_empty": "没有新下载。",
 # cookies page
 "ck_title": "Cookies 管理",
-"ck_sub": "Instagram / X / TikTok / YouTube — 为需要的站点导入登录 cookies。",
+"ck_sub": "Instagram / X / TikTok / YouTube / Snapchat — 为需要的站点导入登录 cookies。",
 "ck_sites_title": "哪些站点有 cookies?", "ck_status": "状态",
 "ck_file": "文件", "ck_active": "有效", "ck_notinstalled": "未安装", "ck_no_cookies": "暂无 cookies — 请在下方粘贴导入。",
 "ck_format": "格式", "ck_format_ok": "Netscape OK", "ck_format_bad": "格式错误",

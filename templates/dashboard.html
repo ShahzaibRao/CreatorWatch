@@ -113,6 +113,7 @@ th[onclick]:hover{color:var(--accent)}
 .badge.tk{color:var(--text)}
 .badge.ig{color:#c13584;border-color:rgba(193,53,132,.4)}
 .badge.tw{color:var(--info);border-color:rgba(59,158,255,.4)}
+.badge.sc{color:#f7c948;border-color:rgba(247,201,72,.4)}
 .notice{font-size:12.5px;padding:10px 14px;border-radius:10px;margin:0 0 14px;border:1px solid var(--border);background:var(--surface);color:var(--muted)}
 .notice b{color:var(--warn)}
 .pill{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap}
@@ -278,7 +279,7 @@ th[onclick]:hover{color:var(--accent)}
         <td><a href="/open_folder/{{ p.id }}" title="Folder kholo" style="text-decoration:none;color:inherit"><span class="pname">{{ p.name }}</span></a> {% if p.id in unseen_pids %}<span class="pill new">{{ t('new') }}</span>{% endif %}<br><a href="/open_folder/{{ p.id }}" title="Folder kholo: {{ p.folder }}" style="text-decoration:none"><span class="pfolder" title="{{ p.folder }}">{{ p.folder }}</span></a><br><span style="font-size:11.5px;color:var(--muted)">{{ p.last_check|humantime or t('first_dl') }}</span>
           <div class="prog" id="prog-{{ p.id }}"><div class="bar"><div class="fill"></div></div><small></small></div>
         </td>
-        <td><span class="badge {% if p.platform=='youtube' %}yt{% elif p.platform=='tiktok' %}tk{% elif p.platform=='instagram' %}ig{% elif p.platform=='twitter' %}tw{% endif %}">{{ p.platform }}</span></td>
+        <td><span class="badge {% if p.platform=='youtube' %}yt{% elif p.platform=='tiktok' %}tk{% elif p.platform=='instagram' %}ig{% elif p.platform=='twitter' %}tw{% elif p.platform=='snapchat' %}sc{% endif %}">{{ p.platform }}</span></td>
         <td>{{ p.interval_minutes or 15 }}m</td>
         <td>{{ p.quality or '720p' }}</td>
         <td><span class="badge">{{ p.scope or 'both' }}</span></td>
