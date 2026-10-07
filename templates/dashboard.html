@@ -95,6 +95,10 @@ tr:last-child td{border-bottom:0}
 .pname{font-weight:700}
 a:hover .pname{color:var(--accent);text-decoration:underline}
 a:hover .pfolder{color:var(--accent)}
+/* Sortable headers */
+th[onclick]{user-select:none}
+th[onclick]:hover{color:var(--accent)}
+.sort-ind{font-size:10px;color:var(--accent)}
 .pfolder{font-size:12px;color:var(--muted);font-family:ui-monospace,Consolas,monospace;word-break:break-all;display:inline-block;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
 /* Prospects: search + pagination + bulk */
 .pager{display:flex;gap:6px;align-items:center;justify-content:center;padding:14px 0 4px;flex-wrap:wrap}
@@ -265,9 +269,11 @@ a:hover .pfolder{color:var(--accent)}
     {% if profiles %}
     <div class="twrap">
     <table id="prosTable">
-      <tr><th><input type="checkbox" class="row-check" id="checkAll" onchange="toggleAll(this)"></th><th>{{ t('c_prospect') }}</th><th>{{ t('c_platform') }}</th><th>{{ t('c_every') }}</th><th>{{ t('c_quality') }}</th><th>Scope</th><th>{{ t('c_videos') }}</th><th>{{ t('c_status') }}</th><th></th></tr>
+      <tr><th><input type="checkbox" class="row-check" id="checkAll" onchange="toggleAll(this)"></th><th onclick="sortPros('name')" style="cursor:pointer" title="Sort">PROSPECT <span class="sort-ind" data-col="name"></span></th><th onclick="sortPros('platform')" style="cursor:pointer" title="Sort">PLATFORM <span class="sort-ind" data-col="platform"></span></th><th onclick="sortPros('interval')" style="cursor:pointer" title="Sort">EVERY <span class="sort-ind" data-col="interval"></span></th><th onclick="sortPros('quality')" style="cursor:pointer" title="Sort">QUALITY <span class="sort-ind" data-col="quality"></span></th><th onclick="sortPros('scope')" style="cursor:pointer" title="Sort">SCOPE <span class="sort-ind" data-col="scope"></span></th><th onclick="sortPros('videos')" style="cursor:pointer" title="Sort">VIDEOS <span class="sort-ind" data-col="videos"></span></th><th onclick="sortPros('status')" style="cursor:pointer" title="Sort">STATUS <span class="sort-ind" data-col="status"></span></th><th></th></tr>
       {% for p in profiles %}
-      <tr data-pid="{{ p.id }}" data-name="{{ p.name|lower }}">
+      {% set vcount = namespace(v=0) %}{% for m in metrics.per_profile %}{% if m.id==p.id %}{% set vcount.v = m.video_count %}{% endif %}{% endfor %}
+      {% set st = 'paused' if p.status=='paused' else ('error' if p.last_error else ('ok' if p.last_check else 'working')) %}
+      <tr data-pid="{{ p.id }}" data-name="{{ p.name|lower }}" data-platform="{{ p.platform }}" data-interval="{{ p.interval_minutes or 15 }}" data-quality="{{ p.quality or '720p' }}" data-scope="{{ p.scope or 'both' }}" data-videos="{{ vcount.v }}" data-status="{{ st }}" data-lastcheck="{{ p.last_check or '' }}">
         <td><input type="checkbox" class="row-check pros-check" value="{{ p.id }}" onchange="updateBulk()"></td>
         <td><a href="/open_folder/{{ p.id }}" title="Folder kholo" style="text-decoration:none;color:inherit"><span class="pname">{{ p.name }}</span></a> {% if p.id in unseen_pids %}<span class="pill new">{{ t('new') }}</span>{% endif %}<br><a href="/open_folder/{{ p.id }}" title="Folder kholo: {{ p.folder }}" style="text-decoration:none"><span class="pfolder" title="{{ p.folder }}">{{ p.folder }}</span></a><br><span style="font-size:11.5px;color:var(--muted)">{{ p.last_check|humantime or t('first_dl') }}</span>
           <div class="prog" id="prog-{{ p.id }}"><div class="bar"><div class="fill"></div></div><small></small></div>
@@ -419,19 +425,42 @@ window.selectFolder=function(){
     }).catch(function(){});
   },15000);
 })();
-/* Prospects: search + pagination (10/page) + AJAX delete + bulk */
+/* Prospects: search + pagination (10/page) + AJAX delete + bulk + sorting */
 (function(){
   var PER_PAGE=10, curPage=1, rows=[];
+  var sortCol='lastcheck', sortDir='desc';  // default: recently active on top
   function getRows(){
     var t=document.getElementById('prosTable');
     if(!t) return [];
     return Array.prototype.slice.call(t.querySelectorAll('tr[data-pid]'));
   }
+  function sortVal(r, col){
+    var v=r.getAttribute('data-'+col)||'';
+    if(col==='videos'||col==='interval') return parseInt(v)||0;
+    return v.toLowerCase();
+  }
+  function sorted(list){
+    return list.slice().sort(function(a,b){
+      var va=sortVal(a,sortCol), vb=sortVal(b,sortCol);
+      var cmp = (va<vb)?-1:((va>vb)?1:0);
+      return sortDir==='asc'?cmp:-cmp;
+    });
+  }
+  window.sortPros=function(col){
+    if(sortCol===col){ sortDir = sortDir==='asc'?'desc':'asc'; }
+    else { sortCol=col; sortDir = (col==='name'||col==='platform')?'asc':'desc'; }
+    // indicators update
+    document.querySelectorAll('.sort-ind').forEach(function(el){
+      el.textContent = (el.getAttribute('data-col')===sortCol) ? (sortDir==='asc'?'▲':'▼') : '';
+    });
+    curPage=1; renderPros();
+  };
   function filtered(){
     var q=(document.getElementById('prosSearch').value||'').toLowerCase().trim();
-    return getRows().filter(function(r){
+    var list=getRows().filter(function(r){
       return !q || (r.getAttribute('data-name')||'').indexOf(q)>=0;
     });
+    return sorted(list);
   }
   window.prosFilter=function(){ curPage=1; renderPros(); };
   function renderPros(){
