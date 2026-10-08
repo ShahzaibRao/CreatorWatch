@@ -486,6 +486,107 @@ def _yt_base(url: str):
         pass
     return u, False
 
+def tiktok_fetch(profile_url: str, limit: int = 10):
+    """TikTok listing yt-dlp se. 'Unable to extract secondary user ID' error par
+    page se user ID nikal kar tiktokuser:{id} se retry."""
+    import re, json
+
+    def _extract(url):
+        with _yt_dlp().YoutubeDL(_ydl_opts_flat()) as ydl:
+            return ydl.extract_info(url, download=False)
+
+    def _to_entries(info):
+        entries = []
+        if not info:
+            return entries
+        if info.get("_type") != "playlist" and "id" in info:
+            return [{"id": info["id"], "title": info.get("title", info["id"]),
+                     "url": info.get("webpage_url", profile_url)}]
+        for e in (info.get("entries") or []):
+            if not e or not e.get("id"):
+                continue
+            entries.append({
+                "id": e["id"],
+                "title": e.get("title", e["id"]),
+                "url": e.get("webpage_url") or e.get("url") or f"https://www.tiktok.com/@{e.get('uploader', '')}/video/{e['id']}",
+            })
+            if len(entries) >= limit:
+                break
+        return entries
+
+    url = normalize_profile_url(profile_url)
+    try:
+        return _to_entries(_extract(url))
+    except Exception as e:
+        err = str(e)
+        if "secondary user ID" not in err:
+            raise
+        # Fallback: page se user ID nikalo
+        print(f"[TIKTOK] secondary user ID fail, page se ID nikal raha: {url[:60]}", flush=True)
+
+    # username nikalo
+    m = re.search(r"tiktok\.com/@([^/?#]+)", url, re.I)
+    if not m:
+        raise Exception(f"TikTok username nahi mila: {url}")
+    username = m.group(1)
+    page_url = f"https://www.tiktok.com/@{username}"
+
+    # cookies lagao
+    ck = os.path.join(DATA_DIR, "cookies.txt")
+    req = urllib.request.Request(page_url, headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+    })
+    if os.path.exists(ck):
+        try:
+            import http.cookiejar
+            jar = http.cookiejar.MozillaCookieJar(ck)
+            jar.load(ignore_discard=True, ignore_expires=True)
+            req.add_header("Cookie", "; ".join(f"{c.name}={c.value}" for c in jar))
+        except Exception:
+            pass
+
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+    except Exception as ex:
+        raise Exception(f"TikTok page nahi khuli: {ex} (asal error: {err[:100]})")
+
+    # __UNIVERSAL_DATA_FOR_REHYDRATION__ me user ID dhoondo
+    m = re.search(r'<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">(.*?)</script>',
+                  html, re.DOTALL)
+    user_id = None
+    if m:
+        try:
+            udata = json.loads(m.group(1))
+            # __DEFAULT_SCOPE__ me user info hota hai
+            scope = udata.get("__DEFAULT_SCOPE__", {})
+            for key, val in scope.items():
+                if isinstance(val, dict) and "userInfo" in val:
+                    user_id = val["userInfo"].get("user", {}).get("id")
+                    break
+            if not user_id:
+                # webapp.user-detail me bhi ho sakta hai
+                for key, val in scope.items():
+                    if "user" in key.lower() and isinstance(val, dict):
+                        user_id = val.get("id") or val.get("user", {}).get("id")
+                        if user_id:
+                            break
+        except Exception:
+            pass
+
+    if not user_id:
+        # HTML me "id":"123456" pattern dhoondo
+        m = re.search(r'"id":"(\d{10,})"', html)
+        if m:
+            user_id = m.group(1)
+
+    if not user_id:
+        raise Exception(f"User ID nahi mili (asal error: {err[:120]})")
+
+    print(f"[TIKTOK] user ID mili: {user_id}, retry...", flush=True)
+    return _to_entries(_extract(f"tiktokuser:{user_id}"))
+
 def fetch_latest_entries(profile_url: str, scope: str = "both"):
     """Return list of {id, title, url} for latest (max 10). Scope: both/videos/shorts."""
     plat = detect_platform(profile_url)
@@ -494,7 +595,9 @@ def fetch_latest_entries(profile_url: str, scope: str = "both"):
     if plat == "twitter":
         return tw_fetch(profile_url, 10)  # is yt-dlp me x.com support nahi -> gallery-dl
     if plat == "snapchat":
-        return snap_fetch(profile_url, 10)  # Snapchat -> gallery-dl (stories/spotlights)
+        return snap_fetch(profile_url, 10)  # Snapchat custom extractor
+    if plat == "tiktok":
+        return tiktok_fetch(profile_url, 10)  # secondary user ID fallback ke sath
     if scope not in ("both", "videos", "shorts"):
         scope = "both"
     if plat == "youtube":
