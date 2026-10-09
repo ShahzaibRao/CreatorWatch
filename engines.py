@@ -64,9 +64,12 @@ def active_versions():
     # Engine update ke baad nayi files foran nazar aayen — Python failed
     # imports ka negative result cache kar leta hai (FileFinder), is liye
     # har check se pehle cache saaf karo. Warna update ke baad bhi "?" rehta.
+    # AUR: pip upgrade ke baad purana loaded module hatao taake naya version aaye.
     try:
-        import importlib
+        import importlib, sys
         importlib.invalidate_caches()
+        for mod in ["yt_dlp", "yt_dlp.version", "gallery_dl"]:
+            sys.modules.pop(mod, None)
     except Exception:
         pass
     try:
