@@ -37,6 +37,8 @@ def init_db():
         ("quality", "ALTER TABLE profiles ADD COLUMN quality TEXT DEFAULT '720p'"),
         ("scope", "ALTER TABLE profiles ADD COLUMN scope TEXT DEFAULT 'both'"),
         ("method", "ALTER TABLE profiles ADD COLUMN method TEXT DEFAULT 'auto'"),
+        ("fail_count", "ALTER TABLE profiles ADD COLUMN fail_count INTEGER DEFAULT 0"),
+        ("auto_paused_until", "ALTER TABLE profiles ADD COLUMN auto_paused_until TEXT DEFAULT ''"),
         ("seen", "ALTER TABLE videos ADD COLUMN seen INTEGER DEFAULT 1"),
     ]:
         try:
@@ -169,19 +171,47 @@ def get_profile(pid):
 
 def update_last_check(pid):
     conn = get_conn()
-    conn.execute("UPDATE profiles SET last_check=?, last_error='' WHERE id=?", (datetime.now().isoformat(), pid))
+    conn.execute("UPDATE profiles SET last_check=?, last_error='', fail_count=0 WHERE id=?", (datetime.now().isoformat(), pid))
     conn.commit()
     conn.close()
 
 def set_profile_error(pid, err):
+    """Error record karo. 3 lagatar fail par 3 ghante ke liye auto-pause."""
+    from datetime import datetime as dt, timedelta
     conn = get_conn()
-    conn.execute("UPDATE profiles SET last_check=?, last_error=? WHERE id=?",
-                 (datetime.now().isoformat(), str(err)[:500], pid))
+    # fail_count barhao
+    row = conn.execute("SELECT fail_count FROM profiles WHERE id=?", (pid,)).fetchone()
+    fails = (row["fail_count"] if row and row["fail_count"] else 0) + 1
+    if fails >= 3:
+        # Auto-pause for 3 hours
+        until = (dt.now() + timedelta(hours=3)).isoformat()
+        conn.execute("UPDATE profiles SET last_check=?, last_error=?, fail_count=?, status='paused', auto_paused_until=? WHERE id=?",
+                     (dt.now().isoformat(), str(err)[:500], fails, until, pid))
+        print(f"[AUTO-PAUSE] profile {pid} 3 fails → 3 ghante pause", flush=True)
+    else:
+        conn.execute("UPDATE profiles SET last_check=?, last_error=?, fail_count=? WHERE id=?",
+                     (dt.now().isoformat(), str(err)[:500], fails, pid))
     conn.commit()
     conn.close()
 
+def resume_expired_auto_pauses():
+    """Jin ka 3-ghanta pause khatm ho gaya, unhe wapas active karo."""
+    from datetime import datetime as dt
+    conn = get_conn()
+    now = dt.now().isoformat()
+    rows = conn.execute("SELECT id, name FROM profiles WHERE status='paused' AND auto_paused_until != '' AND auto_paused_until < ?",
+                        (now,)).fetchall()
+    for r in rows:
+        conn.execute("UPDATE profiles SET status='active', auto_paused_until='', fail_count=0 WHERE id=?", (r["id"],))
+        print(f"[AUTO-RESUME] profile {r['id']} ({r['name']}) wapas active", flush=True)
+    conn.commit()
+    conn.close()
+    return len(rows)
+
 def get_due_profiles():
-    """Wo profiles jinka time period guzar gaya ho (last_check + interval)."""
+    """Wo profiles jinka time period guzar gaya ho (last_check + interval).
+    Pehle expired auto-pause wale resume karo."""
+    resume_expired_auto_pauses()
     from datetime import datetime as dt
     due = []
     for p in get_profiles():
@@ -282,7 +312,11 @@ def mark_seen(profile_id, video_id, title=""):
 
 def set_status(pid, status):
     conn = get_conn()
-    conn.execute("UPDATE profiles SET status=? WHERE id=?", (status, pid))
+    if status == "active":
+        # Manual resume: auto-pause bhi clear karo
+        conn.execute("UPDATE profiles SET status=?, auto_paused_until='', fail_count=0 WHERE id=?", (status, pid))
+    else:
+        conn.execute("UPDATE profiles SET status=? WHERE id=?", (status, pid))
     conn.commit()
     conn.close()
 
