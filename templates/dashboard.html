@@ -54,13 +54,30 @@ input:focus,select:focus{border-color:var(--accent)}
 .btn:hover{background:var(--accent-d);color:#fff}
 .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
 .btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
-.twrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-table{width:100%;border-collapse:collapse;min-width:0}
-th{font-size:11px;padding:10px 8px}
-td{padding:11px 8px;font-size:13.5px}
+.twrap{overflow-x:visible}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th{font-size:11px;padding:10px 6px;white-space:nowrap}
+td{padding:10px 6px;font-size:13px;overflow:hidden;text-overflow:ellipsis}
+th:nth-child(1),td:nth-child(1){width:22%} /* prospect */
+th:nth-child(2),td:nth-child(2){width:11%} /* platform */
+th:nth-child(3),td:nth-child(3){width:8%}  /* every */
+th:nth-child(4),td:nth-child(4){width:9%}  /* quality */
+th:nth-child(5),td:nth-child(5){width:8%}  /* scope */
+th:nth-child(6),td:nth-child(6){width:7%}  /* videos */
+th:nth-child(7),td:nth-child(7){width:11%} /* status */
+th:nth-child(8),td:nth-child(8){width:24%} /* actions */
+td:nth-child(1){white-space:nowrap}
+td:nth-child(1) small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+@media(max-width:900px){
+  th:nth-child(5),td:nth-child(5){display:none} /* scope chhupao */
+  th:nth-child(4),td:nth-child(4){display:none} /* quality chhupao */
+  th:nth-child(1),td:nth-child(1){width:30%}
+  th:nth-child(8),td:nth-child(8){width:30%}
+}
 /* Action buttons icon-only (jagah bachao) — hover par tooltip */
+.act{display:flex;gap:2px;flex-wrap:nowrap;justify-content:flex-end}
 .act .btn-txt{display:none}
-.act .icon-btn{padding:7px 8px}
+.act .icon-btn{padding:6px 6px;font-size:13px;min-width:0}
 /* Folder browser modal */
 .fmodal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center}
 .fmodal.show{display:flex}
