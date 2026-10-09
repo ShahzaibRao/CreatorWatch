@@ -62,9 +62,27 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 <p class="tip">IP wall aaye to mobile hotspot/VPN lagao <b>ya</b> yahan proxy do (e.g. http://127.0.0.1:8080). YouTube, TikTok, Snapchat — sab par lagega. Khali = direct.</p>
 <form method="post">
 <label>Proxy URL</label>
-<input name="yt_proxy" value="{{ yt_proxy }}" placeholder="http://host:port">
+<input name="yt_proxy" id="proxyInput" value="{{ yt_proxy }}" placeholder="http://host:port">
+<div style="display:flex;gap:8px;margin-top:8px">
 <button type="submit">💾 Save Proxy</button>
+<button type="button" onclick="testProxy()" style="background:#3b9eff">🔍 Test Proxy</button>
+</div>
 </form>
+<div id="proxyResult" style="margin-top:8px;font-size:13px"></div>
+<script>
+function testProxy(){
+  var px = document.getElementById('proxyInput').value.trim();
+  var el = document.getElementById('proxyResult');
+  el.innerHTML = '⏳ Testing... (10-15 sec)';
+  fetch('/settings/test_proxy', {method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:'proxy='+encodeURIComponent(px)})
+  .then(r=>r.json()).then(d=>{
+    el.innerHTML = d.msg;
+    el.style.color = d.ok ? 'var(--accent)' : 'var(--danger)';
+  }).catch(e=>{ el.innerHTML='❌ Test fail: '+e; el.style.color='var(--danger)'; });
+}
+</script>
 </div>
 <div class="card">
 <form method="post">

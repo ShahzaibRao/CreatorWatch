@@ -808,6 +808,52 @@ def suggest_workers(cores, ram_gb, speed_mbps):
            "by_net": "Net speed (har worker ~10 Mbps)"}[neck]
     return {"n": best, "by_cpu": by_cpu, "by_ram": by_ram, "by_net": by_net, "why": why}
 
+@app.route("/settings/test_proxy", methods=["POST"])
+def test_proxy():
+    """Proxy kaam kar raha hai ya nahi — live test."""
+    import urllib.request, json, time
+    px = (request.form.get("proxy", "") or "").strip()
+    if not px:
+        # saved proxy test karo
+        px = (db.get_setting("yt_proxy", "") or "").strip()
+    if not px:
+        return {"ok": False, "msg": "Koi proxy nahi di — pehle proxy dalo"}
+    # URL format check
+    if "://" not in px:
+        px = "http://" + px
+    try:
+        # Pehle direct IP lo (bina proxy)
+        direct_ip = "?"
+        try:
+            with urllib.request.urlopen("https://api.ipify.org", timeout=10) as r:
+                direct_ip = r.read().decode().strip()
+        except Exception:
+            pass
+        # Ab proxy se IP lo
+        t0 = time.time()
+        opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({"http": px, "https": px}))
+        req = urllib.request.Request("https://api.ipify.org", headers={
+            "User-Agent": "Mozilla/5.0"})
+        with opener.open(req, timeout=15) as r:
+            proxy_ip = r.read().decode().strip()
+        dt = round(time.time() - t0, 1)
+        if proxy_ip and proxy_ip != direct_ip:
+            return {"ok": True,
+                    "msg": f"✅ Proxy kaam kar raha hai! Direct IP: {direct_ip} → Proxy IP: {proxy_ip} ({dt}s)"}
+        elif proxy_ip == direct_ip:
+            return {"ok": False,
+                    "msg": f"⚠️ Proxy se IP nahi badla (Direct: {direct_ip}, Proxy: {proxy_ip}) — proxy kaam nahi kar raha ya transparent hai"}
+        else:
+            return {"ok": False, "msg": "Proxy se jawab nahi mila"}
+    except Exception as e:
+        err = str(e)
+        if "407" in err:
+            return {"ok": False, "msg": "❌ Proxy auth fail (407) — username/password ghalat hai"}
+        if "403" in err:
+            return {"ok": False, "msg": "❌ Proxy ne mana kar diya (403) — IP whitelist me nahi?"}
+        return {"ok": False, "msg": f"❌ Proxy fail: {err[:150]}"}
+
 @app.route("/settings/calc", methods=["POST"])
 def settings_calc():
     import os as _os
