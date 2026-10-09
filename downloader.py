@@ -542,6 +542,9 @@ def tiktok_gdl_fetch(profile_url: str, limit: int = 10):
         gdl_config.set((), "no-mtime", True)
         if os.path.exists(ck):
             gdl_config.set(("extractor",), "cookies", ck)
+        px = _yt_proxy()
+        if px:
+            gdl_config.set((), "proxy", px)
         try:
             extr = gdl_extractor.find(url)
             if not extr:
@@ -859,6 +862,12 @@ def snap_fetch(profile_url: str, limit: int = 10):
     user = m.group(1)
     page_url = f"https://www.snapchat.com/@{user}"
 
+    # proxy support
+    px = _yt_proxy()
+    handlers = []
+    if px:
+        handlers.append(urllib.request.ProxyHandler({"http": px, "https": px}))
+
     req = urllib.request.Request(page_url, headers={
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                       "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
@@ -878,8 +887,13 @@ def snap_fetch(profile_url: str, limit: int = 10):
             pass
 
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            html = r.read().decode("utf-8", errors="ignore")
+        if handlers:
+            opener = urllib.request.build_opener(*handlers)
+            with opener.open(req, timeout=30) as r:
+                html = r.read().decode("utf-8", errors="ignore")
+        else:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                html = r.read().decode("utf-8", errors="ignore")
     except Exception as e:
         raise Exception(f"Snapchat page nahi khuli [{type(e).__name__}: {e}]")
 
@@ -933,7 +947,14 @@ def snap_download(media_url: str, folder: str, title: str = "", media_type: str 
                       "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
         "Referer": "https://www.snapchat.com/",
     })
-    with urllib.request.urlopen(req, timeout=120) as r:
+    px = _yt_proxy()
+    if px:
+        opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({"http": px, "https": px}))
+        r = opener.open(req, timeout=120)
+    else:
+        r = urllib.request.urlopen(req, timeout=120)
+    with r:
         # Content-Type se extension decide karo (sab se reliable)
         ctype = r.headers.get("Content-Type", "").lower()
         if "jpeg" in ctype or "jpg" in ctype:
@@ -984,6 +1005,9 @@ def ig_download(post_url: str, folder: str, progress=None):
         gdl_config.set((), "no-mtime", True)
         if os.path.exists(ck):
             gdl_config.set(("extractor",), "cookies", ck)
+        px = _yt_proxy()
+        if px:
+            gdl_config.set((), "proxy", px)
         try:
             j = gdl_job.DownloadJob(post_url)
             j.run()
