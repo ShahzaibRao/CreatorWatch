@@ -290,6 +290,7 @@ th[onclick]:hover{color:var(--accent)}
           <a class="icon-btn" href="/check/{{ p.id }}" title="{{ t('check') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 4v6h-6"/><path d="M20.5 15a9 9 0 1 1-2-9.4L23 10"/></svg><span class="btn-txt">{{ t('check') }}</span></a>
           {% if p.status=='paused' %}<a class="icon-btn" href="/resume/{{ p.id }}" title="{{ t('resume') }}">▶ <span class="btn-txt">{{ t('resume') }}</span></a>{% else %}<a class="icon-btn" href="/pause/{{ p.id }}" title="{{ t('stop') }}">⏸ <span class="btn-txt">{{ t('stop') }}</span></a>{% endif %}
           <a class="icon-btn" href="/edit/{{ p.id }}" title="{{ t('edit') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg><span class="btn-txt">{{ t('edit') }}</span></a>
+          <a class="icon-btn" href="/pattern/{{ p.id }}" title="Posting Pattern">📅 <span class="btn-txt">Pattern</span></a>
           <a class="icon-btn danger" href="javascript:void(0)" onclick="ajaxDelete({{ p.id }})" title="{{ t('delete') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg><span class="btn-txt">{{ t('delete') }}</span></a>
         </div></td>
       </tr>

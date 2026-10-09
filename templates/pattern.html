@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head><link rel="icon" href="/app-icon.png"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>📅 Posting Pattern — CreatorWatch</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0b0f14;--surface:#12181f;--border:#212b36;--text:#e8edf2;--muted:#93a0b0;--accent:#12b981;--warn:#f5a524;--danger:#f0524f;--info:#3b9eff;--r:14px}
+[data-theme="light"]{--bg:#eef1f4;--surface:#fff;--border:#dfe6ec;--text:#101820;--muted:#5d6b7a}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui;background:var(--bg);color:var(--text)}
+.wrap{max-width:800px;margin:0 auto;padding:20px 16px 60px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+h1{font-size:19px;margin:0}a{color:var(--info);text-decoration:none}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.card h2{font-size:15px;margin:0 0 12px}
+.suggest{background:rgba(18,185,129,.1);border:1px solid rgba(18,185,129,.4);border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:14px}
+.suggest b{color:var(--accent)}
+.tip{font-size:12.5px;color:var(--muted)}
+canvas{max-height:240px}
+.badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid var(--border)}
+.badge.yt{color:#ff5a5a}.badge.tk{color:#e8edf2}.badge.ig{color:#ff7ab8}.badge.tw{color:var(--info)}.badge.sc{color:#f7c948}
+.meta{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:14px}
+.meta b{color:var(--text)}
+</style></head>
+<body><div class="wrap">
+<div class="top"><a href="/">← Dashboard</a><h1>📅 Posting Pattern</h1><span></span></div>
+
+<div class="card">
+<h2>{{ pat.profile.name }} <span class="badge {% if pat.profile.platform=='youtube' %}yt{% elif pat.profile.platform=='tiktok' %}tk{% elif pat.profile.platform=='instagram' %}ig{% elif pat.profile.platform=='twitter' %}tw{% elif pat.profile.platform=='snapchat' %}sc{% endif %}">{{ pat.profile.platform }}</span></h2>
+<div class="meta"><span>Total videos: <b>{{ pat.total }}</b></span>{% if pat.first %}<span>Data: <b>{{ pat.first }}</b> se <b>{{ pat.last }}</b></span>{% endif %}{% if pat.peak_hour is not none %}<span>Peak time: <b>{{ pat.peak_hour }}:00</b></span>{% endif %}</div>
+</div>
+
+{% if pat.suggestion %}
+<div class="suggest">💡 <b>Suggested interval: {{ pat.suggestion }}</b><br><span class="tip">{{ pat.reason }} (abhi: {{ pat.profile.interval_minutes }} min)</span>
+<br><a href="/apply_interval/{{ pat.profile.id }}?minutes={{ pat.suggestion.split(' ')[0] }}" style="font-size:13px">✅ Ye interval lagao</a></div>
+{% elif pat.total < 5 %}
+<div class="card"><p class="tip">Abhi sirf {{ pat.total }} videos hain — pattern ke liye kam se kam 5 chahiye. Thoda aur download hone do!</p></div>
+{% endif %}
+
+{% if pat.total >= 1 %}
+<div class="card"><h2>⏰ Din ke kis waqt post karta hai</h2><canvas id="chHour"></canvas></div>
+<div class="card"><h2>📆 Hafte ke kin dino me active</h2><canvas id="chDay"></canvas></div>
+{% endif %}
+</div>
+<script>
+const dark = document.documentElement.dataset.theme !== 'light';
+Chart.defaults.color = dark ? '#e8edf2' : '#101820';
+Chart.defaults.borderColor = dark ? '#212b36' : '#dfe6ec';
+new Chart(document.getElementById('chHour'), {type:'bar',
+  data:{labels:Array.from({length:24},(_,h)=>h+':00'),datasets:[{data:{{ pat.hours|tojson }},backgroundColor:'#12b981'}]},
+  options:{plugins:{legend:{display:false}},scales:{x:{ticks:{maxTicksLimit:12}}}}}});
+new Chart(document.getElementById('chDay'), {type:'bar',
+  data:{labels:{{ pat.day_names|tojson }},datasets:[{data:{{ pat.days|tojson }},backgroundColor:'#3b9eff'}]},
+  options:{plugins:{legend:{display:false}}}});
+</script>
+</body></html>

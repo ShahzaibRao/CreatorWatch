@@ -501,3 +501,82 @@ def auto_backup_check():
         print(f"[AUTO-BACKUP] {msg}", flush=True)
         return msg
     return None
+
+def get_posting_pattern(pid):
+    """Ek prospect ka posting pattern: hour-wise, day-wise + interval suggestion."""
+    from datetime import datetime as dt
+    conn = get_conn()
+    prof = conn.execute("SELECT * FROM profiles WHERE id=?", (pid,)).fetchone()
+    if not prof:
+        conn.close()
+        return None
+    prof = dict(prof)
+    # Hour-wise (0-23)
+    by_hour = conn.execute("""
+        SELECT CAST(substr(downloaded_at, 12, 2) AS INTEGER) as h, COUNT(*) as n
+        FROM videos WHERE profile_id=? AND status='done' GROUP BY h ORDER BY h
+    """, (pid,)).fetchall()
+    # Day-wise (0=Mon ... 6=Sun) — SQLite strftime %w: 0=Sun
+    by_day = conn.execute("""
+        SELECT CAST(strftime('%w', downloaded_at) AS INTEGER) as d, COUNT(*) as n
+        FROM videos WHERE profile_id=? AND status='done' GROUP BY d
+    """, (pid,)).fetchall()
+    # Total videos + pehli/aakhri date
+    info = conn.execute("""
+        SELECT COUNT(*) as total, MIN(downloaded_at) as first, MAX(downloaded_at) as last
+        FROM videos WHERE profile_id=? AND status='done'
+    """, (pid,)).fetchone()
+    conn.close()
+
+    hours = [0]*24
+    for r in by_hour:
+        if r["h"] is not None and 0 <= r["h"] < 24:
+            hours[r["h"]] = r["n"]
+    # SQLite: 0=Sun,1=Mon... → 0=Mon order me convert
+    days = [0]*7
+    day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    for r in by_day:
+        d = r["d"]
+        idx = (d - 1) % 7  # Sun(0)→6, Mon(1)→0
+        days[idx] = r["n"]
+
+    total = info["total"] or 0
+    # Interval suggestion
+    suggestion, reason = "", ""
+    if total >= 5 and info["first"] and info["last"]:
+        try:
+            f = dt.fromisoformat(info["first"])
+            l = dt.fromisoformat(info["last"])
+            days_span = max((l - f).days, 1)
+            per_day = total / days_span
+            if per_day >= 3:
+                suggestion, reason = "15 min", f"Roz ~{per_day:.0f} videos — frequent poster!"
+            elif per_day >= 1:
+                suggestion, reason = "60 min", f"Roz ~{per_day:.1f} videos — daily poster"
+            elif per_day >= 0.3:
+                suggestion, reason = "180 min (3 ghante)", f"Hafte me ~{per_day*7:.0f} videos"
+            else:
+                suggestion, reason = "720 min (12 ghante)", f"Mahine me ~{per_day*30:.0f} videos — kam post karta hai"
+        except Exception:
+            pass
+    # Peak hour
+    peak_hour = max(range(24), key=lambda h: hours[h]) if total else None
+
+    return {
+        "profile": prof,
+        "hours": hours,
+        "days": days,
+        "day_names": day_names,
+        "total": total,
+        "suggestion": suggestion,
+        "reason": reason,
+        "peak_hour": peak_hour,
+        "first": (info["first"] or "")[:10],
+        "last": (info["last"] or "")[:10],
+    }
+
+def set_interval(pid, minutes):
+    conn = get_conn()
+    conn.execute("UPDATE profiles SET interval_minutes=? WHERE id=?", (int(minutes), pid))
+    conn.commit()
+    conn.close()

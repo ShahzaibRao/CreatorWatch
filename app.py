@@ -927,6 +927,23 @@ def stats_page():
     return render_template("stats.html", stats=stats,
                            lic=lic.cached_status(db))
 
+@app.route("/pattern/<int:pid>")
+def pattern_page(pid):
+    pat = db.get_posting_pattern(pid)
+    if not pat:
+        return redirect(url_for("dashboard"))
+    return render_template("pattern.html", pat=pat,
+                           lic=lic.cached_status(db))
+
+@app.route("/apply_interval/<int:pid>")
+def apply_interval(pid):
+    try:
+        minutes = max(5, min(int(request.args.get("minutes", 15)), 1440))
+        db.set_interval(pid, minutes)
+    except Exception:
+        pass
+    return redirect(url_for("pattern_page", pid=pid))
+
 @app.route("/backup", methods=["GET", "POST"])
 def backup_page():
     msg = request.args.get("msg", "")
