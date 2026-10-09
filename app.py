@@ -921,6 +921,12 @@ def notifications_read():
     db.mark_all_seen()
     return redirect(url_for("dashboard"))
 
+@app.route("/stats")
+def stats_page():
+    stats = db.get_stats()
+    return render_template("stats.html", stats=stats,
+                           lic=lic.cached_status(db))
+
 @app.route("/cookies", methods=["GET", "POST"])
 def cookies_page():
     msg, msg_ok = request.args.get("msg", ""), request.args.get("ok", "") == "1"

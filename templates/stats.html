@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head><link rel="icon" href="/app-icon.png"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>📊 Stats — CreatorWatch</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0b0f14;--surface:#12181f;--border:#212b36;--text:#e8edf2;--muted:#93a0b0;--accent:#12b981;--warn:#f5a524;--danger:#f0524f;--info:#3b9eff;--r:14px}
+[data-theme="light"]{--bg:#eef1f4;--surface:#fff;--border:#dfe6ec;--text:#101820;--muted:#5d6b7a}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui;background:var(--bg);color:var(--text)}
+.wrap{max-width:1000px;margin:0 auto;padding:20px 16px 60px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+h1{font-size:20px;margin:0}
+a{color:var(--info);text-decoration:none}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:700px){.grid{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.card h2{font-size:15px;margin:0 0 12px}
+.card.full{grid-column:1/-1}
+.stat-num{font-size:28px;font-weight:800;color:var(--accent)}
+.stat-label{font-size:12px;color:var(--muted)}
+canvas{max-height:280px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:7px 4px;border-bottom:1px solid var(--border);text-align:left}
+th{color:var(--muted);font-weight:600}
+.badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid var(--border)}
+.badge.yt{color:#ff5a5a}.badge.tk{color:#e8edf2}.badge.ig{color:#ff7ab8}.badge.tw{color:var(--info)}.badge.sc{color:#f7c948}
+</style></head>
+<body><div class="wrap">
+<div class="top"><a href="/">← Dashboard</a><h1>📊 Stats</h1><span></span></div>
+
+<div class="grid">
+<div class="card"><div class="stat-num">{{ stats.daily|sum(attribute='n') }}</div><div class="stat-label">Videos (pichle 30 din)</div></div>
+<div class="card"><div class="stat-num">{{ "%.1f"|format((stats.total_size or 0)/1073741824) }} GB</div><div class="stat-label">Total storage</div></div>
+
+<div class="card full"><h2>📈 Roz kitni videos (30 din)</h2><canvas id="chDaily"></canvas></div>
+
+<div class="card"><h2>🥧 Platform-wise</h2><canvas id="chPlat"></canvas></div>
+<div class="card"><h2>⏰ Kis waqt zyada videos</h2><canvas id="chHour"></canvas></div>
+
+<div class="card full"><h2>🏆 Top 10 Prospects</h2>
+<table><tr><th>#</th><th>Prospect</th><th>Platform</th><th>Videos</th></tr>
+{% for p in stats.top_prospects %}
+<tr><td>{{ loop.index }}</td><td>{{ p.name }}</td><td><span class="badge {% if p.platform=='youtube' %}yt{% elif p.platform=='tiktok' %}tk{% elif p.platform=='instagram' %}ig{% elif p.platform=='twitter' %}tw{% elif p.platform=='snapchat' %}sc{% endif %}">{{ p.platform }}</span></td><td><b>{{ p.n }}</b></td></tr>
+{% endfor %}
+</table></div>
+</div>
+</div>
+<script>
+const dark = document.documentElement.dataset.theme !== 'light';
+const gridC = dark ? '#212b36' : '#dfe6ec', txtC = dark ? '#e8edf2' : '#101820';
+Chart.defaults.color = txtC; Chart.defaults.borderColor = gridC;
+
+// Daily
+new Chart(document.getElementById('chDaily'), {type:'line',
+  data:{labels:{{ stats.daily|map(attribute='day')|list|tojson }},
+  datasets:[{data:{{ stats.daily|map(attribute='n')|list|tojson }},borderColor:'#12b981',backgroundColor:'rgba(18,185,129,.15)',fill:true,tension:.3}]},
+  options:{plugins:{legend:{display:false}},scales:{x:{ticks:{maxTicksLimit:10}}}}});
+
+// Platform pie
+new Chart(document.getElementById('chPlat'), {type:'doughnut',
+  data:{labels:{{ stats.by_platform|map(attribute='platform')|list|tojson }},
+  datasets:[{data:{{ stats.by_platform|map(attribute='n')|list|tojson }},
+  backgroundColor:['#ff5a5a','#e8edf2','#ff7ab8','#3b9eff','#f7c948']}]}});
+
+// Hour bar
+const hours = Array.from({length:24},(_,h)=>{const f={{ stats.by_hour|tojson }}.find(x=>x.hour===h);return f?f.n:0;});
+new Chart(document.getElementById('chHour'), {type:'bar',
+  data:{labels:Array.from({length:24},(_,h)=>h+':00'),datasets:[{data:hours,backgroundColor:'#3b9eff'}]},
+  options:{plugins:{legend:{display:false}},scales:{x:{ticks:{maxTicksLimit:8}}}}});
+</script>
+</body></html>

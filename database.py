@@ -331,6 +331,46 @@ def get_recent_videos(limit=20):
     conn.close()
     return [dict(r) for r in rows]
 
+def get_stats():
+    """Stats dashboard ke liye data."""
+    from datetime import datetime as dt, timedelta
+    conn = get_conn()
+    # 1. Roz kitni videos (pichle 30 din)
+    daily = conn.execute("""
+        SELECT substr(downloaded_at, 1, 10) as day, COUNT(*) as n
+        FROM videos WHERE status='done'
+        AND downloaded_at >= ?
+        GROUP BY day ORDER BY day
+    """, ((dt.now() - timedelta(days=30)).isoformat(),)).fetchall()
+    # 2. Platform-wise
+    by_platform = conn.execute("""
+        SELECT p.platform, COUNT(*) as n FROM videos v
+        JOIN profiles p ON p.id = v.profile_id
+        WHERE v.status='done' GROUP BY p.platform ORDER BY n DESC
+    """).fetchall()
+    # 3. Top 10 prospects
+    top_prospects = conn.execute("""
+        SELECT p.name, p.platform, COUNT(*) as n FROM videos v
+        JOIN profiles p ON p.id = v.profile_id
+        WHERE v.status='done' GROUP BY p.id ORDER BY n DESC LIMIT 10
+    """).fetchall()
+    # 4. Hour-wise (kis waqt zyada videos aati hain)
+    by_hour = conn.execute("""
+        SELECT CAST(substr(downloaded_at, 12, 2) AS INTEGER) as hour, COUNT(*) as n
+        FROM videos WHERE status='done' GROUP BY hour ORDER BY hour
+    """).fetchall()
+    # 5. Total storage
+    total_size = conn.execute(
+        "SELECT COALESCE(SUM(filesize),0) as s FROM videos WHERE status='done'").fetchone()["s"]
+    conn.close()
+    return {
+        "daily": [{"day": r["day"], "n": r["n"]} for r in daily],
+        "by_platform": [{"platform": r["platform"], "n": r["n"]} for r in by_platform],
+        "top_prospects": [{"name": r["name"], "platform": r["platform"], "n": r["n"]} for r in top_prospects],
+        "by_hour": [{"hour": r["hour"], "n": r["n"]} for r in by_hour],
+        "total_size": total_size,
+    }
+
 def get_metrics(downloads_root="downloads"):
     conn = get_conn()
     total_profiles = conn.execute("SELECT COUNT(*) c FROM profiles").fetchone()["c"]
