@@ -927,6 +927,22 @@ def stats_page():
     return render_template("stats.html", stats=stats,
                            lic=lic.cached_status(db))
 
+@app.route("/backup", methods=["GET", "POST"])
+def backup_page():
+    msg = request.args.get("msg", "")
+    if request.method == "POST":
+        action = request.form.get("action", "")
+        if action == "create":
+            fp, msg = db.create_backup()
+            return redirect(url_for("backup_page", msg=msg))
+        elif action == "restore":
+            name = request.form.get("name", "")
+            msg = db.restore_backup(name)
+            return redirect(url_for("backup_page", msg=msg))
+    backups = db.list_backups()
+    return render_template("backup.html", backups=backups, msg=msg,
+                           lic=lic.cached_status(db))
+
 @app.route("/cookies", methods=["GET", "POST"])
 def cookies_page():
     msg, msg_ok = request.args.get("msg", ""), request.args.get("ok", "") == "1"
@@ -1255,6 +1271,12 @@ def start_scheduler():
 
 if __name__ == "__main__":
     import sys as _sys
+
+    # Hafte me ek bar auto-backup
+    try:
+        db.auto_backup_check()
+    except Exception as e:
+        print(f"[AUTO-BACKUP] skip: {e}", flush=True)
 
     _win_holder = {}  # desktop window yahan rakho taake SHOW signal par restore ho
     if not _ensure_single_instance(_win_holder):

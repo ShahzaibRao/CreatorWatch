@@ -407,3 +407,97 @@ def get_metrics(downloads_root="downloads"):
         "storage_mb": round(total_bytes / (1024*1024), 2),
         "per_profile": [dict(r) for r in per_profile],
     }
+
+# ============ BACKUP ============
+def backup_dir():
+    """Backup folder: Documents/CreatorWatch-Backups"""
+    import os
+    d = os.path.join(os.path.expanduser("~"), "Documents", "CreatorWatch-Backups")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+def create_backup():
+    """data.db + cookies.txt ka backup banao. Returns (filepath, msg)."""
+    import os, shutil
+    from datetime import datetime as dt
+    from paths import user_data_dir
+    try:
+        src_db = DB_PATH
+        src_ck = os.path.join(user_data_dir(), "cookies.txt")
+        if not os.path.exists(src_db):
+            return None, "data.db nahi mili!"
+        ts = dt.now().strftime("%Y-%m-%d_%H-%M")
+        name = f"backup_{ts}.zip"
+        fp = os.path.join(backup_dir(), name)
+        import zipfile
+        with zipfile.ZipFile(fp, "w", zipfile.ZIP_DEFLATED) as z:
+            z.write(src_db, "data.db")
+            if os.path.exists(src_ck):
+                z.write(src_ck, "cookies.txt")
+        # Purane backups: sirf aakhri 10 rakho
+        bks = sorted([f for f in os.listdir(backup_dir()) if f.startswith("backup_") and f.endswith(".zip")])
+        for old in bks[:-10]:
+            try: os.remove(os.path.join(backup_dir(), old))
+            except Exception: pass
+        # Last backup time save karo (auto-backup ke liye)
+        set_setting("last_backup", dt.now().isoformat())
+        sz = os.path.getsize(fp)
+        return fp, f"Backup ho gaya: {name} ({sz//1024} KB)"
+    except Exception as e:
+        return None, f"Backup fail: {e}"
+
+def list_backups():
+    """Maujood backups ki list."""
+    import os
+    from datetime import datetime as dt
+    out = []
+    d = backup_dir()
+    if not os.path.exists(d):
+        return out
+    for f in sorted(os.listdir(d), reverse=True):
+        if f.startswith("backup_") and f.endswith(".zip"):
+            fp = os.path.join(d, f)
+            out.append({
+                "name": f,
+                "size_kb": os.path.getsize(fp) // 1024,
+                "date": dt.fromtimestamp(os.path.getmtime(fp)).strftime("%d %b, %H:%M"),
+            })
+    return out
+
+def restore_backup(name):
+    """Backup se data.db + cookies.txt wapis lao. Returns msg."""
+    import os, zipfile, shutil
+    from paths import user_data_dir
+    fp = os.path.join(backup_dir(), name)
+    if not os.path.exists(fp):
+        return "Backup file nahi mili!"
+    try:
+        # Pehle current ka backup le lo (safety)
+        create_backup()
+        with zipfile.ZipFile(fp, "r") as z:
+            # data.db restore
+            if "data.db" in z.namelist():
+                with z.open("data.db") as src, open(DB_PATH, "wb") as dst:
+                    shutil.copyfileobj(src, dst)
+            # cookies.txt restore
+            if "cookies.txt" in z.namelist():
+                ck = os.path.join(user_data_dir(), "cookies.txt")
+                with z.open("cookies.txt") as src, open(ck, "wb") as dst:
+                    shutil.copyfileobj(src, dst)
+        return f"Restore ho gaya: {name} — app restart karo!"
+    except Exception as e:
+        return f"Restore fail: {e}"
+
+def auto_backup_check():
+    """Hafte me ek bar khud backup (app start par check)."""
+    from datetime import datetime as dt, timedelta
+    last = get_setting("last_backup", "")
+    try:
+        last_dt = dt.fromisoformat(last) if last else None
+    except Exception:
+        last_dt = None
+    if not last_dt or (dt.now() - last_dt) > timedelta(days=7):
+        fp, msg = create_backup()
+        print(f"[AUTO-BACKUP] {msg}", flush=True)
+        return msg
+    return None
