@@ -1082,6 +1082,19 @@ def engine_versions():
     import engines
     return engines.active_versions()
 
+def _ver_eq(a, b):
+    """Versions compare — leading zeros ignore karo (2026.08.19 == 2026.8.19)."""
+    def norm(v):
+        parts = []
+        for p in str(v).split("."):
+            # numeric parts ke leading zeros hatao
+            parts.append(str(int(p)) if p.isdigit() else p)
+        return ".".join(parts)
+    try:
+        return norm(a) == norm(b)
+    except Exception:
+        return str(a) == str(b)
+
 def latest_engine_versions():
     """PyPI se yt-dlp aur gallery-dl ke latest versions. Returns dict."""
     import json, urllib.request
@@ -1171,6 +1184,7 @@ def updates_page():
     return render_template("updates.html", version=VERSION, latest=latest or "—",
                            has_update=has_update, notes=(rel.get("body", "") or "")[:1500] if isinstance(rel, dict) else "",
                            engines=engine_versions(), latest_engines=latest_engine_versions(),
+                           ver_eq=_ver_eq,
                            frozen=is_frozen(), external=ext, ytstack=ytstack,
                            pending=pending, msg=msg, msg_ok=msg_ok, app_dir=app_dir(),
                            rel_error=(rel.get("error", "") if isinstance(rel, dict) else ""))
