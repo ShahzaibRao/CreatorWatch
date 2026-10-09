@@ -64,12 +64,12 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 <label>Proxy URLs (ek line me ek)</label>
 <textarea name="yt_proxy" rows="3" placeholder="http://user:pass@host:port&#10;http://user2:pass2@host2:port2" style="width:100%;font-family:monospace;font-size:12px">{{ yt_proxy }}</textarea>
 <label style="margin-top:8px">Kin platforms par proxy lage?</label>
-<div style="display:flex;gap:12px;flex-wrap:wrap;margin:6px 0">
-<label><input type="checkbox" name="px_youtube" value="1" {% if 'youtube' in proxy_platforms %}checked{% endif %}> YouTube</label>
-<label><input type="checkbox" name="px_tiktok" value="1" {% if 'tiktok' in proxy_platforms %}checked{% endif %}> TikTok</label>
-<label><input type="checkbox" name="px_instagram" value="1" {% if 'instagram' in proxy_platforms %}checked{% endif %}> Instagram</label>
-<label><input type="checkbox" name="px_twitter" value="1" {% if 'twitter' in proxy_platforms %}checked{% endif %}> X/Twitter</label>
-<label><input type="checkbox" name="px_snapchat" value="1" {% if 'snapchat' in proxy_platforms %}checked{% endif %}> Snapchat</label>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:8px 0;align-items:center">
+<label style="display:flex;align-items:center;gap:6px;margin:0"><input type="checkbox" name="px_youtube" value="1" {% if 'youtube' in proxy_platforms %}checked{% endif %}> YouTube</label>
+<label style="display:flex;align-items:center;gap:6px;margin:0"><input type="checkbox" name="px_tiktok" value="1" {% if 'tiktok' in proxy_platforms %}checked{% endif %}> TikTok</label>
+<label style="display:flex;align-items:center;gap:6px;margin:0"><input type="checkbox" name="px_instagram" value="1" {% if 'instagram' in proxy_platforms %}checked{% endif %}> Instagram</label>
+<label style="display:flex;align-items:center;gap:6px;margin:0"><input type="checkbox" name="px_twitter" value="1" {% if 'twitter' in proxy_platforms %}checked{% endif %}> X/Twitter</label>
+<label style="display:flex;align-items:center;gap:6px;margin:0"><input type="checkbox" name="px_snapchat" value="1" {% if 'snapchat' in proxy_platforms %}checked{% endif %}> Snapchat</label>
 </div>
 <p class="tip">⚠️ Instagram/X par proxy se account flag ho sakta hai (IP change). Sirf TikTok/YouTube par lagao agar cookies wale accounts hain.</p>
 <div style="display:flex;gap:8px;margin-top:8px">
@@ -80,14 +80,16 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 <div id="proxyResult" style="margin-top:8px;font-size:13px"></div>
 <script>
 function testProxy(){
-  var px = document.querySelector('textarea[name="yt_proxy"]').value.trim().split('\n')[0].trim();
+  var px = document.querySelector('textarea[name="yt_proxy"]').value.trim();
   var el = document.getElementById('proxyResult');
-  el.innerHTML = '⏳ Testing... (10-15 sec)';
+  var n = px.split('\n').filter(l=>l.trim()).length;
+  el.innerHTML = '⏳ Testing '+n+' proxies... (10-20 sec)';
+  el.style.color = '';
   fetch('/settings/test_proxy', {method:'POST',
     headers:{'Content-Type':'application/x-www-form-urlencoded'},
     body:'proxy='+encodeURIComponent(px)})
   .then(r=>r.json()).then(d=>{
-    el.innerHTML = d.msg;
+    el.innerHTML = d.html || d.msg;
     el.style.color = d.ok ? 'var(--accent)' : 'var(--danger)';
   }).catch(e=>{ el.innerHTML='❌ Test fail: '+e; el.style.color='var(--danger)'; });
 }
