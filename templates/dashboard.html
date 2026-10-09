@@ -55,24 +55,24 @@ input:focus,select:focus{border-color:var(--accent)}
 .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
 .btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
 .twrap{overflow-x:visible}
-table{width:100%;border-collapse:collapse;table-layout:fixed}
-th{font-size:11px;padding:10px 6px;white-space:nowrap}
-td{padding:10px 6px;font-size:13px;overflow:hidden;text-overflow:ellipsis}
-th:nth-child(1),td:nth-child(1){width:22%} /* prospect */
-th:nth-child(2),td:nth-child(2){width:11%} /* platform */
-th:nth-child(3),td:nth-child(3){width:8%}  /* every */
-th:nth-child(4),td:nth-child(4){width:9%}  /* quality */
-th:nth-child(5),td:nth-child(5){width:8%}  /* scope */
-th:nth-child(6),td:nth-child(6){width:7%}  /* videos */
-th:nth-child(7),td:nth-child(7){width:11%} /* status */
-th:nth-child(8),td:nth-child(8){width:24%} /* actions */
-td:nth-child(1){white-space:nowrap}
-td:nth-child(1) small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;padding:10px 6px;white-space:nowrap;text-align:left}
+td{padding:10px 6px;font-size:13px;vertical-align:middle}
+/* Column widths (9 columns: checkbox, prospect, platform, every, quality, scope, videos, status, actions) */
+th:nth-child(1),td:nth-child(1){width:34px;min-width:34px}
+th:nth-child(2),td:nth-child(2){max-width:220px}
+td:nth-child(2){white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+td:nth-child(2) small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:var(--muted)}
+th:nth-child(3),td:nth-child(3){white-space:nowrap}
+th:nth-child(4),td:nth-child(4){white-space:nowrap}
+th:nth-child(5),td:nth-child(5){white-space:nowrap}
+th:nth-child(6),td:nth-child(6){white-space:nowrap}
+th:nth-child(7),td:nth-child(7){white-space:nowrap;text-align:center}
+th:nth-child(8),td:nth-child(8){white-space:nowrap}
+th:nth-child(9),td:nth-child(9){white-space:nowrap;text-align:right;min-width:150px}
 @media(max-width:900px){
-  th:nth-child(5),td:nth-child(5){display:none} /* scope chhupao */
-  th:nth-child(4),td:nth-child(4){display:none} /* quality chhupao */
-  th:nth-child(1),td:nth-child(1){width:30%}
-  th:nth-child(8),td:nth-child(8){width:30%}
+  th:nth-child(5),td:nth-child(5){display:none}
+  th:nth-child(6),td:nth-child(6){display:none}
 }
 /* Action buttons icon-only (jagah bachao) — hover par tooltip */
 .act{display:flex;gap:2px;flex-wrap:nowrap;justify-content:flex-end}
