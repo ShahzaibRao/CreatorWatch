@@ -766,7 +766,14 @@ def settings():
         if "yt_proxy" in request.form:
             px = request.form.get("yt_proxy", "").strip()
             db.set_setting("yt_proxy", px)
-            msg = f"Proxy set: {px}" if px else "Proxy hataya gaya (direct)"
+            # Per-platform proxy toggle
+            plats = []
+            for p in ["youtube", "tiktok", "instagram", "twitter", "snapchat"]:
+                if request.form.get(f"px_{p}"):
+                    plats.append(p)
+            db.set_setting("proxy_platforms", ",".join(plats) if plats else "all")
+            n = len([l for l in px.splitlines() if l.strip()])
+            msg = f"Proxy set: {n} proxy, platforms: {', '.join(plats) if plats else 'all'}" if px else "Proxy hataya gaya (direct)"
         elif "downloads_root" in request.form:
             root = request.form.get("downloads_root", "").strip().strip('"')
             if root:
@@ -791,9 +798,11 @@ def settings():
     root = db.get_downloads_root()
     free_gb, total_gb = db.disk_free_gb(root)
     yt_proxy = db.get_setting("yt_proxy", "") or ""
+    proxy_platforms = db.get_setting("proxy_platforms", "all") or "all"
     return render_template("settings.html", n=max_workers(), msg=msg,
                            suggestion=None, cores=_os.cpu_count() or 4,
                            root=root, free_gb=free_gb, total_gb=total_gb, yt_proxy=yt_proxy,
+                           proxy_platforms=proxy_platforms,
                            lic=lic.cached_status(db))
 
 def suggest_workers(cores, ram_gb, speed_mbps):
@@ -875,7 +884,8 @@ def settings_calc():
     free_gb, total_gb = db.disk_free_gb(root)
     yt_proxy = db.get_setting("yt_proxy", "") or ""
     return render_template("settings.html", n=max_workers(), msg=msg, suggestion=s, cores=cores,
-                           root=root, free_gb=free_gb, total_gb=total_gb, yt_proxy=yt_proxy)
+                           root=root, free_gb=free_gb, total_gb=total_gb, yt_proxy=yt_proxy,
+                           proxy_platforms=db.get_setting("proxy_platforms", "all") or "all")
 
 @app.route("/settings/apply", methods=["POST"])
 def settings_apply():
@@ -890,7 +900,8 @@ def settings_apply():
     yt_proxy = db.get_setting("yt_proxy", "") or ""
     return render_template("settings.html", n=n, msg=f"Apply ho gaya: {n} parallel workers",
                            suggestion=None, cores=_os2.cpu_count() or 4,
-                           root=root, free_gb=free_gb, total_gb=total_gb, yt_proxy=yt_proxy)
+                           root=root, free_gb=free_gb, total_gb=total_gb, yt_proxy=yt_proxy,
+                           proxy_platforms=db.get_setting("proxy_platforms", "all") or "all")
 
 @app.route("/api/notifications")
 def api_notifications():

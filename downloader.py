@@ -239,13 +239,51 @@ def _yt_proxy():
     except Exception:
         return ""
 
-def _yt_opts(pot=False):
+# Proxy rotation state
+_proxy_index = [0]
+
+def _get_proxy_list():
+    """Saved proxy list (ek line me ek proxy)."""
+    try:
+        from database import get_setting
+        raw = (get_setting("yt_proxy", "") or "").strip()
+        return [p.strip() for p in raw.splitlines() if p.strip()]
+    except Exception:
+        return []
+
+def _get_proxy(platform=""):
+    """Round-robin se agli proxy do. Platform check: sirf selected platforms par proxy."""
+    try:
+        from database import get_setting
+        # Per-platform toggle
+        plats = (get_setting("proxy_platforms", "all") or "all").strip().lower()
+        if plats != "all" and platform:
+            allowed = [p.strip() for p in plats.split(",")]
+            if platform.lower() not in allowed:
+                return ""  # is platform par proxy nahi
+    except Exception:
+        pass
+    proxies = _get_proxy_list()
+    if not proxies:
+        return ""
+    if len(proxies) == 1:
+        return proxies[0]
+    # Round-robin
+    idx = _proxy_index[0] % len(proxies)
+    _proxy_index[0] += 1
+    return proxies[idx]
+
+def _use_proxy(platform=""):
+    """Kya is platform par proxy lagna chahiye?"""
+    return bool(_get_proxy(platform))
+
+def _yt_opts(pot=False, platform="youtube"):
     """YouTube opts: cookies + JS runtime + (pot: PO token + EJS solver) + proxy."""
     o = {"js_runtimes": _js_runtimes(prefer_deno=pot)}
     ck = os.path.join(DATA_DIR, "cookies.txt")
     if os.path.exists(ck):
         o["cookiefile"] = ck
-    px = _yt_proxy()
+    px = _get_proxy(platform)
     if px:
         o["proxy"] = px
     if pot:
@@ -441,7 +479,7 @@ def ensure_yt_stack(progress=None):
     notes.append("server running" if ok else "server start FAIL — tools/potserver/server.log dekho")
     return ok, "; ".join(notes)
 
-def _ydl_opts_flat():
+def _ydl_opts_flat(platform=""):
     # fast check: don't download, just list
     opts = {
         "quiet": True,
@@ -450,7 +488,7 @@ def _ydl_opts_flat():
         "playlistend": 10,  # latest 10 only per check
         "skip_download": True,
     }
-    opts.update(_yt_opts())
+    opts.update(_yt_opts(platform=platform))
     return opts
 
 def detect_scope(url: str) -> str:
@@ -492,7 +530,7 @@ def tiktok_fetch(profile_url: str, limit: int = 10):
     import re, json
 
     def _extract(url):
-        with _yt_dlp().YoutubeDL(_ydl_opts_flat()) as ydl:
+        with _yt_dlp().YoutubeDL(_ydl_opts_flat(platform="tiktok")) as ydl:
             return ydl.extract_info(url, download=False)
 
     def _to_entries(info):
@@ -542,7 +580,7 @@ def tiktok_gdl_fetch(profile_url: str, limit: int = 10):
         gdl_config.set((), "no-mtime", True)
         if os.path.exists(ck):
             gdl_config.set(("extractor",), "cookies", ck)
-        px = _yt_proxy()
+        px = _get_proxy("tiktok")
         if px:
             gdl_config.set((), "proxy", px)
         try:
@@ -863,7 +901,7 @@ def snap_fetch(profile_url: str, limit: int = 10):
     page_url = f"https://www.snapchat.com/@{user}"
 
     # proxy support
-    px = _yt_proxy()
+    px = _get_proxy("snapchat")
     handlers = []
     if px:
         handlers.append(urllib.request.ProxyHandler({"http": px, "https": px}))
@@ -947,7 +985,7 @@ def snap_download(media_url: str, folder: str, title: str = "", media_type: str 
                       "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
         "Referer": "https://www.snapchat.com/",
     })
-    px = _yt_proxy()
+    px = _get_proxy("snapchat")
     if px:
         opener = urllib.request.build_opener(
             urllib.request.ProxyHandler({"http": px, "https": px}))
@@ -984,7 +1022,7 @@ def snap_download(media_url: str, folder: str, title: str = "", media_type: str 
                 f.write(chunk)
     return fp, title
 
-def ig_download(post_url: str, folder: str, progress=None):
+def ig_download(post_url: str, folder: str, progress=None, platform="instagram"):
     """Instagram/X post download gallery-dl Python API se (sys.argv ke bajaye — zombie bug ka asli hal). Returns (filepath, title)."""
     import glob
     from gallery_dl import job as gdl_job
@@ -1005,7 +1043,7 @@ def ig_download(post_url: str, folder: str, progress=None):
         gdl_config.set((), "no-mtime", True)
         if os.path.exists(ck):
             gdl_config.set(("extractor",), "cookies", ck)
-        px = _yt_proxy()
+        px = _get_proxy(platform)
         if px:
             gdl_config.set((), "proxy", px)
         try:
@@ -1116,7 +1154,7 @@ def download_one(video_url: str, folder: str, quality: str = "720p", platform: s
                 # Doosra error — phir bhi gallery-dl try karo
                 print(f"[SOCIAL] yt-dlp fail ({err[:80]}), gallery-dl try", flush=True)
         # Fallback: gallery-dl (images + videos dono)
-        fp, title = ig_download(video_url, folder, progress)
+        fp, title = ig_download(video_url, folder, progress, platform)
         if fp == folder:
             # Dono fail — wazeh error
             raise Exception(f"dono se download nahi hui (yt-dlp: no video, gallery-dl: no file) — post me media na ho")
