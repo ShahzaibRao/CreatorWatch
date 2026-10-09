@@ -519,78 +519,14 @@ def tiktok_fetch(profile_url: str, limit: int = 10):
         return _to_entries(_extract(url))
     except Exception as e:
         err = str(e)
-        if "secondary user ID" not in err:
-            raise
-        # Fallback: page se user ID nikalo
-        print(f"[TIKTOK] secondary user ID fail, page se ID nikal raha: {url[:60]}", flush=True)
-
-    # username nikalo
-    m = re.search(r"tiktok\.com/@([^/?#]+)", url, re.I)
-    if not m:
-        raise Exception(f"TikTok username nahi mila: {url}")
-    username = m.group(1)
-    page_url = f"https://www.tiktok.com/@{username}"
-
-    # cookies lagao
-    ck = os.path.join(DATA_DIR, "cookies.txt")
-    req = urllib.request.Request(page_url, headers={
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                      "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-    })
-    if os.path.exists(ck):
+        # yt-dlp fail → seedha gallery-dl fallback (tiktokuser: format toot gaya hai,
+        # page se ID nikalne ka faida nahi — waqt zaya hota hai)
+        print(f"[TIKTOK] yt-dlp fail, gallery-dl try: {err[:80]}", flush=True)
         try:
-            import http.cookiejar
-            jar = http.cookiejar.MozillaCookieJar(ck)
-            jar.load(ignore_discard=True, ignore_expires=True)
-            req.add_header("Cookie", "; ".join(f"{c.name}={c.value}" for c in jar))
-        except Exception:
-            pass
-
-    try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            html = r.read().decode("utf-8", errors="ignore")
-    except Exception as ex:
-        raise Exception(f"TikTok page nahi khuli: {ex} (asal error: {err[:100]})")
-
-    # __UNIVERSAL_DATA_FOR_REHYDRATION__ me user ID dhoondo
-    m = re.search(r'<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">(.*?)</script>',
-                  html, re.DOTALL)
-    user_id = None
-    if m:
-        try:
-            udata = json.loads(m.group(1))
-            # __DEFAULT_SCOPE__ me user info hota hai
-            scope = udata.get("__DEFAULT_SCOPE__", {})
-            for key, val in scope.items():
-                if isinstance(val, dict) and "userInfo" in val:
-                    user_id = val["userInfo"].get("user", {}).get("id")
-                    break
-            if not user_id:
-                # webapp.user-detail me bhi ho sakta hai
-                for key, val in scope.items():
-                    if "user" in key.lower() and isinstance(val, dict):
-                        user_id = val.get("id") or val.get("user", {}).get("id")
-                        if user_id:
-                            break
-        except Exception:
-            pass
-
-    if not user_id:
-        # HTML me "id":"123456" pattern dhoondo
-        m = re.search(r'"id":"(\d{10,})"', html)
-        if m:
-            user_id = m.group(1)
-
-    if not user_id:
-        raise Exception(f"User ID nahi mili (asal error: {err[:120]})")
-
-    print(f"[TIKTOK] user ID mili: {user_id}, retry...", flush=True)
-    try:
-        return _to_entries(_extract(f"tiktokuser:{user_id}"))
-    except Exception as e2:
-        # yt-dlp se na ho to gallery-dl try karo (fallback pattern)
-        print(f"[TIKTOK] yt-dlp retry fail, gallery-dl try: {str(e2)[:80]}", flush=True)
-        return tiktok_gdl_fetch(profile_url, limit)
+            return tiktok_gdl_fetch(profile_url, limit)
+        except Exception as e2:
+            # Dono fail — asal error dikhao
+            raise Exception(f"TikTok fail (yt-dlp: {err[:100]} | gallery-dl: {str(e2)[:100]})")
 
 def tiktok_gdl_fetch(profile_url: str, limit: int = 10):
     """TikTok listing gallery-dl se (yt-dlp fail hone par fallback)."""
