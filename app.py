@@ -1082,6 +1082,21 @@ def engine_versions():
     import engines
     return engines.active_versions()
 
+def latest_engine_versions():
+    """PyPI se yt-dlp aur gallery-dl ke latest versions. Returns dict."""
+    import json, urllib.request
+    out = {}
+    for pkg in ["yt-dlp", "gallery-dl"]:
+        try:
+            req = urllib.request.Request(f"https://pypi.org/pypi/{pkg}/json",
+                                         headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                data = json.loads(r.read().decode())
+                out[pkg] = data["info"]["version"]
+        except Exception:
+            out[pkg] = ""
+    return out
+
 def latest_release():
     """GitHub latest release (15s timeout). Returns dict or {} on fail."""
     import json
@@ -1155,7 +1170,8 @@ def updates_page():
         ytstack = {}
     return render_template("updates.html", version=VERSION, latest=latest or "—",
                            has_update=has_update, notes=(rel.get("body", "") or "")[:1500] if isinstance(rel, dict) else "",
-                           engines=engine_versions(), frozen=is_frozen(), external=ext, ytstack=ytstack,
+                           engines=engine_versions(), latest_engines=latest_engine_versions(),
+                           frozen=is_frozen(), external=ext, ytstack=ytstack,
                            pending=pending, msg=msg, msg_ok=msg_ok, app_dir=app_dir(),
                            rel_error=(rel.get("error", "") if isinstance(rel, dict) else ""))
 
