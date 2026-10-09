@@ -585,7 +585,47 @@ def tiktok_fetch(profile_url: str, limit: int = 10):
         raise Exception(f"User ID nahi mili (asal error: {err[:120]})")
 
     print(f"[TIKTOK] user ID mili: {user_id}, retry...", flush=True)
-    return _to_entries(_extract(f"tiktokuser:{user_id}"))
+    try:
+        return _to_entries(_extract(f"tiktokuser:{user_id}"))
+    except Exception as e2:
+        # yt-dlp se na ho to gallery-dl try karo (fallback pattern)
+        print(f"[TIKTOK] yt-dlp retry fail, gallery-dl try: {str(e2)[:80]}", flush=True)
+        return tiktok_gdl_fetch(profile_url, limit)
+
+def tiktok_gdl_fetch(profile_url: str, limit: int = 10):
+    """TikTok listing gallery-dl se (yt-dlp fail hone par fallback)."""
+    from gallery_dl import extractor as gdl_extractor
+    import gallery_dl.config as gdl_config
+
+    ck = os.path.join(DATA_DIR, "cookies.txt")
+    url = profile_url.strip().rstrip("/")
+
+    entries, seen = [], set()
+    with _gdl_lock:
+        gdl_config.clear()
+        gdl_config.set((), "no-mtime", True)
+        if os.path.exists(ck):
+            gdl_config.set(("extractor",), "cookies", ck)
+        try:
+            extr = gdl_extractor.find(url)
+            if not extr:
+                raise Exception(f"URL support nahi: {url}")
+            for msg, surl, kw in extr:
+                if msg != 1 or not surl or surl in seen:
+                    continue
+                seen.add(surl)
+                kw = kw or {}
+                sid = str(kw.get("id", "") or "")[:60] or surl[-30:]
+                title = str(kw.get("title", "") or kw.get("desc", "") or "")[:80] or sid
+                # gallery-dl kabhi page URL deta hai, kabhi direct — dono handle karo
+                entries.append({"id": sid, "title": title, "url": surl})
+                if len(entries) >= limit:
+                    break
+        except Exception as e:
+            raise Exception(f"TikTok gallery-dl fail [{type(e).__name__}: {e}]")
+    if not entries:
+        raise Exception("TikTok se koi video nahi mili (yt-dlp aur gallery-dl dono fail)")
+    return entries
 
 def fetch_latest_entries(profile_url: str, scope: str = "both"):
     """Return list of {id, title, url} for latest (max 10). Scope: both/videos/shorts."""
@@ -931,8 +971,10 @@ def snap_fetch(profile_url: str, limit: int = 10):
                 seen.add(media)
                 sid = str(_val(snap.get("snapId")) or "")[:60] or media[-30:]
                 title = str(_val(hl.get("storyTitle")) or _val(snap.get("snapTitle")) or "")[:80] or sid
-                # timestamp
-                entries.append({"id": sid, "title": title, "url": media})
+                # media type: 0=image, 1=video (stories aksar images hoti hain!)
+                mtype = snap.get("snapMediaType", 1)
+                entries.append({"id": sid, "title": title, "url": media,
+                                "media_type": "image" if mtype == 0 else "video"})
                 if len(entries) >= limit:
                     break
             if len(entries) >= limit:
@@ -944,32 +986,45 @@ def snap_fetch(profile_url: str, limit: int = 10):
         raise Exception("koi snap nahi mili — profile me public Spotlight/Stories nahi?")
     return entries
 
-def snap_download(media_url: str, folder: str, title: str = ""):
-    """Snapchat direct media URL download (cf-st.sc-cdn.net)."""
+def snap_download(media_url: str, folder: str, title: str = "", media_type: str = ""):
+    """Snapchat direct media URL download (cf-st.sc-cdn.net).
+    media_type: 'image' ya 'video' (snap_fetch se), warna Content-Type se detect."""
     import re
     os.makedirs(folder, exist_ok=True)
-    # extension guess karo
-    ext = "mp4"
-    if ".jpg" in media_url or ".jpeg" in media_url or ".png" in media_url:
-        ext = "jpg"
     safe = re.sub(r'[\\/*?:"<>|]', "_", (title or "snap")[:60]).strip() or "snap"
-    # unique filename
-    base = os.path.join(folder, f"{safe}.{ext}")
-    fp, i = base, 1
-    while os.path.exists(fp):
-        fp = os.path.join(folder, f"{safe}_{i}.{ext}")
-        i += 1
     req = urllib.request.Request(media_url, headers={
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                       "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
         "Referer": "https://www.snapchat.com/",
     })
-    with urllib.request.urlopen(req, timeout=120) as r, open(fp, "wb") as f:
-        while True:
-            chunk = r.read(65536)
-            if not chunk:
-                break
-            f.write(chunk)
+    with urllib.request.urlopen(req, timeout=120) as r:
+        # Content-Type se extension decide karo (sab se reliable)
+        ctype = r.headers.get("Content-Type", "").lower()
+        if "jpeg" in ctype or "jpg" in ctype:
+            ext = "jpg"
+        elif "png" in ctype:
+            ext = "png"
+        elif "webp" in ctype:
+            ext = "webp"
+        elif "mp4" in ctype:
+            ext = "mp4"
+        elif media_type == "image":
+            ext = "jpg"
+        else:
+            # fallback: URL se guess
+            ext = "jpg" if (".jpg" in media_url or ".jpeg" in media_url or
+                           ".png" in media_url or ".400" in media_url) else "mp4"
+        base = os.path.join(folder, f"{safe}.{ext}")
+        fp, i = base, 1
+        while os.path.exists(fp):
+            fp = os.path.join(folder, f"{safe}_{i}.{ext}")
+            i += 1
+        with open(fp, "wb") as f:
+            while True:
+                chunk = r.read(65536)
+                if not chunk:
+                    break
+                f.write(chunk)
     return fp, title
 
 def ig_download(post_url: str, folder: str, progress=None):
@@ -1078,18 +1133,23 @@ def download_one(video_url: str, folder: str, quality: str = "720p", platform: s
         if not os.path.exists(fp):
             raise Exception("Snapchat download fail — URL expire ho gayi?")
         return fp, t
-    if platform in ("instagram", "twitter"):
+    if platform in ("instagram", "twitter", "tiktok"):
         # Mechanism: pehle yt-dlp (videos ke liye behtar), agar "no video" error
-        # aaye to gallery-dl (images ke liye). Dono ka faida.
+        # aaye to gallery-dl (images/photo posts ke liye). Dono ka faida.
+        # TikTok photo slideshows par yt-dlp sirf audio deta hai — gallery-dl images lega.
         try:
             fp, title = _social_download_ytdlp(video_url, folder, quality, progress, platform)
             if fp != folder and os.path.exists(fp):
-                return fp, title
-            # yt-dlp ne file nahi banayi — ab gallery-dl try karo (images ke liye)
-            print(f"[SOCIAL] yt-dlp se file nahi mili, gallery-dl try: {video_url[:60]}", flush=True)
+                # TikTok: check karo audio-only to nahi (photo post ka masla)
+                if platform == "tiktok" and fp.lower().endswith((".m4a", ".mp3", ".opus", ".webm")):
+                    print(f"[SOCIAL] TikTok audio-only mili, gallery-dl try (photo post?): {video_url[:60]}", flush=True)
+                else:
+                    return fp, title
+            else:
+                print(f"[SOCIAL] yt-dlp se file nahi mili, gallery-dl try: {video_url[:60]}", flush=True)
         except Exception as e:
             err = str(e)
-            # "No video" ka matlab image post ho sakta hai — gallery-dl try karo
+            # "No video" ka matlab image/photo post ho sakta hai — gallery-dl try karo
             if "no video" in err.lower() or "no video formats" in err.lower():
                 print(f"[SOCIAL] yt-dlp: no video, gallery-dl try (images): {video_url[:60]}", flush=True)
             else:
@@ -1101,10 +1161,7 @@ def download_one(video_url: str, folder: str, quality: str = "720p", platform: s
             # Dono fail — wazeh error
             raise Exception(f"dono se download nahi hui (yt-dlp: no video, gallery-dl: no file) — post me media na ho")
         return fp, title
-    if platform == "tiktok":
-        fmt = "best/b"  # tiktok par single-file best (height filter support nahi)
-    else:
-        fmt = QUALITY_FORMATS.get(quality, QUALITY_FORMATS["720p"])
+    fmt = QUALITY_FORMATS.get(quality, QUALITY_FORMATS["720p"])
     def _hook(d):
         if progress and d.get("status") == "downloading":
             try:
