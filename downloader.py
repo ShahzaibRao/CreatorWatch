@@ -949,6 +949,23 @@ def snap_fetch(profile_url: str, limit: int = 10):
         return x.get("value", x) if isinstance(x, dict) else x
 
     entries, seen = [], set()
+    # 1. Active Story (24h wali) — sab se pehle!
+    story = pp.get("story")
+    if isinstance(story, dict):
+        for snap in story.get("snapList") or []:
+            urls = snap.get("snapUrls") or {}
+            media = urls.get("mediaUrl")
+            if not media or media in seen:
+                continue
+            seen.add(media)
+            sid = str(_val(snap.get("snapId")) or "")[:60] or media[-30:]
+            title = str(_val(snap.get("snapTitle")) or "")[:80] or sid
+            mtype = snap.get("snapMediaType", 1)
+            entries.append({"id": sid, "title": f"Story: {title}", "url": media,
+                            "media_type": "image" if mtype == 0 else "video"})
+            if len(entries) >= limit:
+                break
+    # 2. Spotlight + Curated Highlights
     for key in ("spotlightHighlights", "curatedHighlights"):
         for hl in pp.get(key) or []:
             for snap in hl.get("snapList") or []:
