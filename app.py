@@ -691,8 +691,9 @@ def api_delete_bulk():
 
 @app.route("/open_folder/<int:pid>")
 def open_folder(pid):
-    """Prospect ka download folder file explorer me kholo."""
+    """Prospect ka download folder file explorer me kholo. Saath me seen mark."""
     import subprocess
+    db.mark_profile_seen(pid)  # NEW tags hatao
     p = db.get_profile(pid)
     if not p:
         return redirect(url_for("dashboard"))
@@ -712,8 +713,9 @@ def open_folder(pid):
 
 @app.route("/api/open_video_folder/<int:vid>", methods=["POST"])
 def api_open_video_folder(vid):
-    """Video wali folder file explorer me kholo (AJAX)."""
+    """Video wali folder file explorer me kholo (AJAX). Saath me seen mark."""
     import subprocess
+    db.mark_video_seen(vid)  # NEW tag hatao
     conn = db.get_conn()
     row = conn.execute("SELECT filename FROM videos WHERE id=?", (vid,)).fetchone()
     conn.close()

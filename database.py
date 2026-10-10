@@ -580,3 +580,17 @@ def set_interval(pid, minutes):
     conn.execute("UPDATE profiles SET interval_minutes=? WHERE id=?", (int(minutes), pid))
     conn.commit()
     conn.close()
+
+def mark_video_seen(vid):
+    """Ek video ko seen mark karo (NEW tag hat jayega)."""
+    conn = get_conn()
+    conn.execute("UPDATE videos SET seen=1 WHERE id=?", (vid,))
+    conn.commit()
+    conn.close()
+
+def mark_profile_seen(pid):
+    """Prospect ki saari videos seen mark karo."""
+    conn = get_conn()
+    conn.execute("UPDATE videos SET seen=1 WHERE profile_id=? AND seen=0", (pid,))
+    conn.commit()
+    conn.close()

@@ -533,6 +533,9 @@ window.selectFolder=function(){
     fetch('/api/open_video_folder/'+vid,{method:'POST'}).then(function(r){return r.json()}).then(function(d){
       if(!d.ok) alert('Folder nahi khul saki');
     }).catch(function(){});
+    // NEW tag foran hatao (bina refresh)
+    var el=event.currentTarget;
+    if(el){ var pill=el.querySelector('.pill.new'); if(pill) pill.remove(); }
   };
   // AJAX check all — bina page reload
   window.ajaxCheckAll=function(btn){
