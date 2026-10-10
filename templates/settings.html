@@ -72,6 +72,11 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 <label style="display:flex;align-items:center;gap:6px;margin:0"><input type="checkbox" name="px_snapchat" value="1" {% if 'snapchat' in proxy_platforms %}checked{% endif %}> Snapchat</label>
 </div>
 <p class="tip">⚠️ Instagram/X par proxy se account flag ho sakta hai (IP change). Sirf TikTok/YouTube par lagao agar cookies wale accounts hain.</p>
+<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer">
+<input type="checkbox" name="smart_proxy" value="1" {% if smart_proxy %}checked{% endif %}>
+<b>⚡ Smart Mode</b> — Proxy sirf link nikalne ke liye, download direct (tez + sasta!)
+</label>
+<p class="tip">Smart Mode me video files proxy se nahi guzrengi — direct download hogi. Speed tez, AWS bandwidth bachega. Agar direct fail ho to proxy se try karega.</p>
 <div style="display:flex;gap:8px;margin-top:8px">
 <button type="submit">💾 Save Proxy</button>
 <button type="button" onclick="testProxy()" style="background:#3b9eff">🔍 Test Proxy</button>

@@ -772,6 +772,8 @@ def settings():
                 if request.form.get(f"px_{p}"):
                     plats.append(p)
             db.set_setting("proxy_platforms", ",".join(plats) if plats else "all")
+            # Smart Mode toggle
+            db.set_setting("smart_proxy", "1" if request.form.get("smart_proxy") else "")
             n = len([l for l in px.splitlines() if l.strip()])
             msg = f"Proxy set: {n} proxy, platforms: {', '.join(plats) if plats else 'all'}" if px else "Proxy hataya gaya (direct)"
         elif "downloads_root" in request.form:
@@ -799,10 +801,11 @@ def settings():
     free_gb, total_gb = db.disk_free_gb(root)
     yt_proxy = db.get_setting("yt_proxy", "") or ""
     proxy_platforms = db.get_setting("proxy_platforms", "all") or "all"
+    smart_proxy = (db.get_setting("smart_proxy", "") or "") == "1"
     return render_template("settings.html", n=max_workers(), msg=msg,
                            suggestion=None, cores=_os.cpu_count() or 4,
                            root=root, free_gb=free_gb, total_gb=total_gb, yt_proxy=yt_proxy,
-                           proxy_platforms=proxy_platforms,
+                           proxy_platforms=proxy_platforms, smart_proxy=smart_proxy,
                            lic=lic.cached_status(db))
 
 def suggest_workers(cores, ram_gb, speed_mbps):
@@ -893,7 +896,8 @@ def settings_calc():
     yt_proxy = db.get_setting("yt_proxy", "") or ""
     return render_template("settings.html", n=max_workers(), msg=msg, suggestion=s, cores=cores,
                            root=root, free_gb=free_gb, total_gb=total_gb, yt_proxy=yt_proxy,
-                           proxy_platforms=db.get_setting("proxy_platforms", "all") or "all")
+                           proxy_platforms=db.get_setting("proxy_platforms", "all") or "all",
+                           smart_proxy=(db.get_setting("smart_proxy", "") or "") == "1")
 
 @app.route("/settings/apply", methods=["POST"])
 def settings_apply():
@@ -909,7 +913,8 @@ def settings_apply():
     return render_template("settings.html", n=n, msg=f"Apply ho gaya: {n} parallel workers",
                            suggestion=None, cores=_os2.cpu_count() or 4,
                            root=root, free_gb=free_gb, total_gb=total_gb, yt_proxy=yt_proxy,
-                           proxy_platforms=db.get_setting("proxy_platforms", "all") or "all")
+                           proxy_platforms=db.get_setting("proxy_platforms", "all") or "all",
+                           smart_proxy=(db.get_setting("smart_proxy", "") or "") == "1")
 
 @app.route("/api/notifications")
 def api_notifications():

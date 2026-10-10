@@ -1073,8 +1073,111 @@ QUALITY_FORMATS = {
     "360p": "bv*[height<=360]+ba/b[height<=360]",
 }
 
+def _download_direct(media_url: str, filepath: str, progress=None):
+    """Direct download bina proxy (tez!). Returns True/False."""
+    import urllib.request
+    try:
+        # No proxy — direct connection!
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        req = urllib.request.Request(media_url, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Referer": "https://www.tiktok.com/",
+        })
+        with opener.open(req, timeout=30) as r:
+            total = int(r.headers.get("Content-Length", 0))
+            done = 0
+            os.makedirs(os.path.dirname(filepath) or ".", exist_ok=True)
+            with open(filepath, "wb") as f:
+                while True:
+                    chunk = r.read(1024 * 64)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    done += len(chunk)
+                    if progress and total:
+                        pct = round(done * 100 / total, 1)
+                        progress({"pct": pct, "speed": None,
+                                  "title": os.path.basename(filepath)[-60:]})
+            if progress:
+                progress({"pct": 100, "speed": None})
+        # Check file bani aur khali nahi
+        return os.path.exists(filepath) and os.path.getsize(filepath) > 1024
+    except Exception as e:
+        print(f"[SMART] direct download fail: {e}", flush=True)
+        try:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        except Exception:
+            pass
+        return False
+
+def _social_download_smart(post_url: str, folder: str, progress=None, platform: str = "tiktok"):
+    """Smart Mode: proxy se link nikalo, download direct karo. Returns (filepath, title)."""
+    # Phase 1: Proxy se video info nikalo (download nahi!)
+    url = post_url
+    if platform == "twitter":
+        url = url.replace("x.com/i/web/status/", "twitter.com/i/status/").replace("x.com/i/status/", "twitter.com/i/status/").replace("x.com/", "twitter.com/")
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "noplaylist": True,
+    }
+    opts.update(_yt_opts(platform=platform))  # proxy wale opts
+    ydl = _yt_dlp().YoutubeDL(opts)
+    info = ydl.extract_info(url, download=False)
+    if not info:
+        raise Exception("Video info nahi mili (proxy se)")
+    title = info.get("title", info.get("id", "video"))
+    vid_id = info.get("id", "vid")
+
+    # Best video format ka direct URL nikalo
+    media_url = None
+    ext = "mp4"
+    formats = info.get("formats", [])
+    if formats:
+        # Video wale formats (audio-only nahi)
+        vids = [f for f in formats if f.get("vcodec", "none") != "none" and f.get("url")]
+        if vids:
+            # Sab se achhi quality (filesize ya height se)
+            vids.sort(key=lambda f: (f.get("height") or 0, f.get("filesize") or 0), reverse=True)
+            best = vids[0]
+            media_url = best.get("url")
+            ext = best.get("ext", "mp4")
+    if not media_url:
+        media_url = info.get("url")
+        ext = info.get("ext", "mp4")
+    if not media_url:
+        raise Exception("Direct video URL nahi mila")
+
+    # Phase 2: Direct download (bina proxy!)
+    safe_title = "".join(c for c in title[:50] if c.isalnum() or c in " -_").strip() or vid_id
+    filepath = os.path.join(folder, f"{safe_title}-{vid_id}.{ext}")
+    print(f"[SMART] direct download: {media_url[:60]}...", flush=True)
+    if _download_direct(media_url, filepath, progress):
+        return filepath, title
+    raise Exception("Direct download fail — IP-locked URL?")
+
 def _social_download_ytdlp(post_url: str, folder: str, quality: str = "720p", progress=None, platform: str = "twitter"):
-    """Instagram/Twitter post yt-dlp se. Returns (filepath, title)."""
+    """Instagram/Twitter post yt-dlp se. Returns (filepath, title).
+    Smart Mode: proxy sirf link nikalne ke liye, download direct (tez!)."""
+    # Smart Mode check
+    smart = False
+    try:
+        from database import get_setting
+        smart = (get_setting("smart_proxy", "") or "") == "1"
+    except Exception:
+        pass
+
+    if smart and _use_proxy(platform):
+        # SMART: proxy se sirf link nikalo, download direct karo
+        try:
+            return _social_download_smart(post_url, folder, progress, platform)
+        except Exception as e:
+            print(f"[SMART] direct fail ({str(e)[:80]}), proxy se try", flush=True)
+            # Fallback: normal proxy download
+            pass
+
     def _hook(d):
         if progress and d.get("status") == "downloading":
             try:
