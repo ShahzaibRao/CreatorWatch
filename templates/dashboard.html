@@ -288,7 +288,8 @@ th[onclick]:hover{color:var(--accent)}
     {% if profiles %}
     <div class="twrap">
     <table id="prosTable">
-      <tr><th><input type="checkbox" class="row-check" id="checkAll" onchange="toggleAll(this)"></th><th onclick="sortPros('name')" style="cursor:pointer" title="Sort">PROSPECT <span class="sort-ind" data-col="name"></span></th><th onclick="sortPros('platform')" style="cursor:pointer" title="Sort">PLATFORM <span class="sort-ind" data-col="platform"></span></th><th onclick="sortPros('interval')" style="cursor:pointer" title="Sort">EVERY <span class="sort-ind" data-col="interval"></span></th><th onclick="sortPros('quality')" style="cursor:pointer" title="Sort">QUALITY <span class="sort-ind" data-col="quality"></span></th><th onclick="sortPros('scope')" style="cursor:pointer" title="Sort">SCOPE <span class="sort-ind" data-col="scope"></span></th><th onclick="sortPros('videos')" style="cursor:pointer" title="Sort">VIDEOS <span class="sort-ind" data-col="videos"></span></th><th onclick="sortPros('status')" style="cursor:pointer" title="Sort">STATUS <span class="sort-ind" data-col="status"></span></th><th></th></tr>
+      <thead><tr><th><input type="checkbox" class="row-check" id="checkAll" onchange="toggleAll(this)"></th><th onclick="sortPros('name')" style="cursor:pointer" title="Sort">PROSPECT <span class="sort-ind" data-col="name"></span></th><th onclick="sortPros('platform')" style="cursor:pointer" title="Sort">PLATFORM <span class="sort-ind" data-col="platform"></span></th><th onclick="sortPros('interval')" style="cursor:pointer" title="Sort">EVERY <span class="sort-ind" data-col="interval"></span></th><th onclick="sortPros('quality')" style="cursor:pointer" title="Sort">QUALITY <span class="sort-ind" data-col="quality"></span></th><th onclick="sortPros('scope')" style="cursor:pointer" title="Sort">SCOPE <span class="sort-ind" data-col="scope"></span></th><th onclick="sortPros('videos')" style="cursor:pointer" title="Sort">VIDEOS <span class="sort-ind" data-col="videos"></span></th><th onclick="sortPros('status')" style="cursor:pointer" title="Sort">STATUS <span class="sort-ind" data-col="status"></span></th><th></th></tr></thead>
+      <tbody>
       {% for p in profiles %}
       {% set vcount = namespace(v=0) %}{% for m in metrics.per_profile %}{% if m.id==p.id %}{% set vcount.v = m.video_count %}{% endif %}{% endfor %}
       {% set st = 'paused' if p.status=='paused' else ('error' if p.last_error else ('ok' if p.last_check else 'working')) %}
@@ -312,6 +313,7 @@ th[onclick]:hover{color:var(--accent)}
         </div></td>
       </tr>
       {% endfor %}
+      </tbody>
     </table>
     </div>
     <div class="pager" id="prosPager"></div>

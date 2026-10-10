@@ -580,6 +580,15 @@ def deactivate_license():
 @app.route("/")
 def dashboard():
     profiles = db.get_profiles()
+    # Active jobs wale upar (refresh par bhi)
+    try:
+        with JOBS_LOCK:
+            active_pids = {int(pid) for pid, j in JOBS.items()
+                           if j.get("state") == "active"}
+    except Exception:
+        active_pids = set()
+    if active_pids:
+        profiles.sort(key=lambda p: (0 if p["id"] in active_pids else 1, p["id"]))
     metrics = db.get_metrics()
     recent = db.get_recent_videos(10)
     unseen = db.get_unseen(20)
