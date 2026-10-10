@@ -822,15 +822,23 @@ def suggest_workers(cores, ram_gb, speed_mbps):
 
 @app.route("/settings/test_proxy", methods=["POST"])
 def test_proxy():
-    """Sab proxies test karo — har ek ka result."""
+    """Sab proxies test karo — IP + har platform accessible hai ya nahi."""
     import urllib.request, time
     raw = (request.form.get("proxy", "") or "").strip()
     if not raw:
-        # saved proxies test karo
         raw = (db.get_setting("yt_proxy", "") or "").strip()
     proxies = [p.strip() for p in raw.splitlines() if p.strip()]
     if not proxies:
         return {"ok": False, "html": "Koi proxy nahi di — pehle proxy dalo"}
+
+    # Platforms to test
+    platforms = {
+        "TikTok": "https://www.tiktok.com/",
+        "YouTube": "https://www.youtube.com/",
+        "Instagram": "https://www.instagram.com/",
+        "X": "https://x.com/",
+    }
+
     # Direct IP
     direct_ip = "?"
     try:
@@ -838,40 +846,69 @@ def test_proxy():
             direct_ip = r.read().decode().strip()
     except Exception:
         pass
+
     results = []
     all_ok = True
     for px in proxies:
         if "://" not in px:
             px = "http://" + px
-        # IP:port nikalo display ke liye
         short = px.split("@")[-1][:30]
+        # IP check
         try:
             t0 = time.time()
             opener = urllib.request.build_opener(
                 urllib.request.ProxyHandler({"http": px, "https": px}))
-            req = urllib.request.Request("https://api.ipify.org", headers={
-                "User-Agent": "Mozilla/5.0"})
+            req = urllib.request.Request("https://api.ipify.org",
+                                         headers={"User-Agent": "Mozilla/5.0"})
             with opener.open(req, timeout=15) as r:
                 proxy_ip = r.read().decode().strip()
             dt = round(time.time() - t0, 1)
             if proxy_ip and proxy_ip != direct_ip:
-                results.append(f"✅ <b>{short}</b> — OK! Proxy IP: {proxy_ip} ({dt}s)")
+                ip_msg = f"✅ <b>{short}</b> — IP: {proxy_ip} ({dt}s)"
             elif proxy_ip == direct_ip:
-                results.append(f"⚠️ <b>{short}</b> — IP nahi badla (transparent/dead)")
+                ip_msg = f"⚠️ <b>{short}</b> — IP nahi badla"
                 all_ok = False
             else:
-                results.append(f"❌ <b>{short}</b> — jawab nahi mila")
+                ip_msg = f"❌ <b>{short}</b> — jawab nahi"
                 all_ok = False
         except Exception as e:
             err = str(e)
             if "407" in err:
-                results.append(f"❌ <b>{short}</b> — auth fail (user/pass ghalat)")
+                ip_msg = f"❌ <b>{short}</b> — auth fail"
             elif "403" in err:
-                results.append(f"❌ <b>{short}</b> — mana kar diya (403)")
+                ip_msg = f"❌ <b>{short}</b> — 403"
             else:
-                results.append(f"❌ <b>{short}</b> — {err[:80]}")
+                ip_msg = f"❌ <b>{short}</b> — {err[:60]}"
             all_ok = False
-    html = f"Direct IP: {direct_ip}<br>" + "<br>".join(results)
+            results.append(ip_msg)
+            continue  # IP hi fail to platforms check nahi
+
+        # Platform checks (is proxy se khulti hain?)
+        plat_results = []
+        for pname, purl in platforms.items():
+            try:
+                preq = urllib.request.Request(purl, headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                }, method="HEAD")
+                with opener.open(preq, timeout=8) as pr:
+                    code = pr.status
+                if code < 400:
+                    plat_results.append(f"{pname} ✅")
+                else:
+                    plat_results.append(f"{pname} ⚠️({code})")
+            except Exception as e:
+                err = str(e)[:40]
+                if "403" in err or "denied" in err.lower():
+                    plat_results.append(f"{pname} 🚫 blocked")
+                elif "timeout" in err.lower() or "timed out" in err:
+                    plat_results.append(f"{pname} ⏱️ timeout")
+                else:
+                    plat_results.append(f"{pname} ❌")
+                # all_ok unchanged — platform block hona proxy ka qasoor nahi
+        results.append(ip_msg + "<br><small style='margin-left:16px'>" +
+                       " &nbsp; ".join(plat_results) + "</small>")
+
+    html = f"Direct IP: {direct_ip}<br><br>" + "<br><br>".join(results)
     return {"ok": all_ok, "html": html}
 
 @app.route("/settings/calc", methods=["POST"])

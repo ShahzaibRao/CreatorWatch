@@ -88,7 +88,7 @@ function testProxy(){
   var px = document.querySelector('textarea[name="yt_proxy"]').value.trim();
   var el = document.getElementById('proxyResult');
   var n = px.split('\n').filter(l=>l.trim()).length;
-  el.innerHTML = '⏳ Testing '+n+' proxies... (10-20 sec)';
+  el.innerHTML = '⏳ Testing '+n+' proxies + platforms... (30-60 sec)';
   el.style.color = '';
   fetch('/settings/test_proxy', {method:'POST',
     headers:{'Content-Type':'application/x-www-form-urlencoded'},
