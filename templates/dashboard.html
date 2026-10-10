@@ -418,8 +418,10 @@ window.selectFolder=function(){
       var w=document.getElementById('workers');
       if(w) w.textContent='⚙ '+d.workers.busy+'/'+d.workers.max+' workers';
       document.querySelectorAll('.prog').forEach(function(el){ el.classList.remove('on'); });
+      var activePids=[];
       Object.keys(jobs).forEach(function(pid){
         var j=jobs[pid]; if(j.state!=='active') return;
+        activePids.push(pid);
         var el=document.getElementById('prog-'+pid); if(!el) return;
         el.classList.add('on');
         var pct=j.pct, label='';
@@ -431,6 +433,16 @@ window.selectFolder=function(){
         el.querySelector('.fill').style.width=pct+'%';
         el.querySelector('small').textContent=(j.stage==='listing'?'🔍 ':'⬇ ')+label;
       });
+      // Active wale prospects upar lao (default sort)
+      if(activePids.length){
+        var tbody=document.querySelector('#prosTable tbody');
+        if(tbody){
+          activePids.forEach(function(pid){
+            var row=tbody.querySelector('tr[data-pid="'+pid+'"]');
+            if(row) tbody.prepend(row);
+          });
+        }
+      }
     }).catch(function(){});
   },3000);
   setInterval(function(){
