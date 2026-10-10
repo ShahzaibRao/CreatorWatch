@@ -741,6 +741,26 @@ def check_one(pid):
     submit(pid)
     return redirect(url_for("dashboard"))
 
+@app.route("/api/check/<int:pid>", methods=["POST"])
+def api_check_one(pid):
+    """AJAX check — bina page reload."""
+    p = db.get_profile(pid)
+    if not p:
+        return {"ok": False, "msg": "Profile nahi mila"}
+    submit(pid)
+    return {"ok": True, "msg": "Check shuru!"}
+
+@app.route("/api/check_all", methods=["POST"])
+def api_check_all():
+    """AJAX check all — bina page reload."""
+    n = 0
+    for p in db.get_profiles():
+        if p.get("status") != "active":
+            continue
+        submit(p["id"])
+        n += 1
+    return {"ok": True, "msg": f"{n} profiles check ho rahe hain!"}
+
 @app.route("/check_all")
 def check_all():
     for p in db.get_profiles():
