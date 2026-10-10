@@ -710,6 +710,29 @@ def open_folder(pid):
         pass
     return redirect(url_for("dashboard"))
 
+@app.route("/api/open_video_folder/<int:vid>", methods=["POST"])
+def api_open_video_folder(vid):
+    """Video wali folder file explorer me kholo (AJAX)."""
+    import subprocess
+    conn = db.get_conn()
+    row = conn.execute("SELECT filename FROM videos WHERE id=?", (vid,)).fetchone()
+    conn.close()
+    if not row or not row["filename"]:
+        return {"ok": False}
+    folder = os.path.dirname(row["filename"])
+    if not folder or not os.path.isdir(folder):
+        return {"ok": False}
+    try:
+        if sys.platform == "win32":
+            os.startfile(folder)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", folder])
+        else:
+            subprocess.Popen(["xdg-open", folder])
+        return {"ok": True}
+    except Exception:
+        return {"ok": False}
+
 @app.route("/api/browse")
 def api_browse():
     """Folder browser — path ke andar wale folders ki list."""

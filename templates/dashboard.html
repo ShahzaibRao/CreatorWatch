@@ -146,6 +146,7 @@ th[onclick]:hover{color:var(--accent)}
 .rlist{display:flex;flex-direction:column}
 .ritem{display:flex;gap:12px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--border)}
 .ritem:last-child{border-bottom:0}
+.ritem[onclick]:hover{background:var(--surface2)}
 .thumb{width:42px;height:42px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .thumb svg{width:18px;height:18px;stroke:var(--accent)}
 .ritem b{font-size:13.5px;display:block;line-height:1.35}
@@ -327,7 +328,7 @@ th[onclick]:hover{color:var(--accent)}
     {% if recent %}
     <div class="rlist">
       {% for v in recent %}
-      <div class="ritem">
+      <div class="ritem" onclick="openVideoFolder({{ v.id }})" style="cursor:pointer" title="Folder kholo">
         <div class="thumb"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg></div>
         <div><b>{{ v.title }} {% if not v.seen %}<span class="pill new">{{ t('new') }}</span>{% endif %}</b><small>{{ v.profile_name }} · {{ v.platform }}</small></div>
         <time>{{ v.downloaded_at[:16].replace('T',' ') }}</time>
@@ -526,6 +527,12 @@ window.selectFolder=function(){
         updateBulk(); renderPros();
       }
     });
+  };
+  // Video ki folder kholo
+  window.openVideoFolder=function(vid){
+    fetch('/api/open_video_folder/'+vid,{method:'POST'}).then(function(r){return r.json()}).then(function(d){
+      if(!d.ok) alert('Folder nahi khul saki');
+    }).catch(function(){});
   };
   // AJAX check all — bina page reload
   window.ajaxCheckAll=function(btn){
