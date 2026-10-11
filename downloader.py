@@ -485,7 +485,7 @@ def _ydl_opts_flat(platform=""):
         "quiet": True,
         "no_warnings": True,
         "extract_flat": True,
-        "playlistend": 10,  # latest 10 only per check
+        "playlistend": 30,  # latest 30 per check (pinned + ordering buffer)
         "skip_download": True,
     }
     opts.update(_yt_opts(platform=platform))
@@ -605,16 +605,16 @@ def tiktok_gdl_fetch(profile_url: str, limit: int = 10):
     return entries
 
 def fetch_latest_entries(profile_url: str, scope: str = "both"):
-    """Return list of {id, title, url} for latest (max 10). Scope: both/videos/shorts."""
+    """Return list of {id, title, url} for latest (max 30). Scope: both/videos/shorts."""
     plat = detect_platform(profile_url)
     if plat == "instagram":
-        return ig_fetch(profile_url, 10)  # yt-dlp insta broken -> gallery-dl
+        return ig_fetch(profile_url, 30)  # yt-dlp insta broken -> gallery-dl
     if plat == "twitter":
-        return tw_fetch(profile_url, 10)  # is yt-dlp me x.com support nahi -> gallery-dl
+        return tw_fetch(profile_url, 30)  # is yt-dlp me x.com support nahi -> gallery-dl
     if plat == "snapchat":
-        return snap_fetch(profile_url, 10)  # Snapchat custom extractor
+        return snap_fetch(profile_url, 30)  # Snapchat custom extractor
     if plat == "tiktok":
-        return tiktok_fetch(profile_url, 10)  # secondary user ID fallback ke sath
+        return tiktok_fetch(profile_url, 30)  # secondary user ID fallback ke sath
     if scope not in ("both", "videos", "shorts"):
         scope = "both"
     if plat == "youtube":
@@ -1395,7 +1395,7 @@ def first_run(profile: dict, progress=None):
 def check_profile(profile: dict, progress=None):
     """
     profile: dict with id, url, folder
-    Latest 10 (videos + shorts) check karta hai, sirf NAYI download.
+    Latest 30 (videos + shorts) check karta hai, sirf NAYI download.
     DB me video_id save rehta hai -> file delete bhi ho jaye to dobara download NAHI hogi.
     Returns (new_count, errors)
     """
