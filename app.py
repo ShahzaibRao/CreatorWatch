@@ -1092,6 +1092,86 @@ def notifications_read():
     db.mark_all_seen()
     return redirect(url_for("dashboard"))
 
+@app.route("/retry")
+def retry_page():
+    """Failed Retry Queue page."""
+    failed = db.get_failed_downloads()
+    return render_template("retry.html", failed=failed, lic=lic.cached_status(db))
+
+@app.route("/retry/<int:fid>", methods=["POST"])
+def retry_one(fid):
+    """Ek failed video dobara try karo."""
+    import downloader as dl
+    failed = db.get_failed_downloads()
+    item = next((f for f in failed if f["id"] == fid), None)
+    if not item:
+        return jsonify({"ok": False, "error": "Nahi mili"})
+    p = db.get_profile(item["profile_id"])
+    if not p:
+        return jsonify({"ok": False, "error": "Profile nahi mila"})
+    try:
+        entry = {"id": item["video_id"], "title": item["title"], "url": item["url"]}
+        fp, title = dl.download_one(entry["url"], p["folder"], p.get("quality", "720p"),
+                                    p.get("platform", "youtube"), method=p.get("method", "auto"),
+                                    title=item["title"])
+        if fp and fp != p["folder"]:
+            size = os.path.getsize(fp) if os.path.exists(fp) else 0
+            db.add_video(p["id"], item["video_id"], title or item["title"], fp, size)
+            db.mark_failed_done(fid)
+            return jsonify({"ok": True})
+        return jsonify({"ok": False, "error": "Download fail (koi file nahi)"})
+    except Exception as e:
+        db.add_failed_download(p["id"], item["video_id"], item["title"], item["url"], str(e))
+        return jsonify({"ok": False, "error": str(e)[:200]})
+
+@app.route("/retry/all", methods=["POST"])
+def retry_all():
+    """Saari failed videos dobara try karo (background)."""
+    import downloader as dl
+    failed = db.get_failed_downloads()
+    if not failed:
+        return jsonify({"ok": True, "count": 0})
+    def _run():
+        for item in failed:
+            p = db.get_profile(item["profile_id"])
+            if not p:
+                continue
+            try:
+                fp, title = dl.download_one(item["url"], p["folder"], p.get("quality", "720p"),
+                                            p.get("platform", "youtube"), method=p.get("method", "auto"),
+                                            title=item["title"])
+                if fp and fp != p["folder"]:
+                    size = os.path.getsize(fp) if os.path.exists(fp) else 0
+                    db.add_video(p["id"], item["video_id"], title or item["title"], fp, size)
+                    db.mark_failed_done(item["id"])
+            except Exception as e:
+                try:
+                    db.add_failed_download(p["id"], item["video_id"], item["title"], item["url"], str(e))
+                except Exception:
+                    pass
+    threading.Thread(target=_run, daemon=True).start()
+    return jsonify({"ok": True, "count": len(failed)})
+
+@app.route("/retry/clear", methods=["POST"])
+def retry_clear():
+    db.clear_failed_downloads()
+    return jsonify({"ok": True})
+
+@app.route("/dead")
+def dead_page():
+    """Dead Account Cleaner page."""
+    dead = db.get_dead_profiles()
+    return render_template("dead.html", dead=dead, lic=lic.cached_status(db))
+
+@app.route("/dead/reset/<int:pid>", methods=["POST"])
+def dead_reset(pid):
+    """Dead profile ka fail counter reset karo (dobara chance do)."""
+    conn = db.get_conn()
+    conn.execute("UPDATE profiles SET fail_count=0, last_error='' WHERE id=?", (pid,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
 @app.route("/stats")
 def stats_page():
     stats = db.get_stats()

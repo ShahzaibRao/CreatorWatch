@@ -1447,6 +1447,12 @@ def check_profile(profile: dict, progress=None):
                 progress({**base, "done": i + 1, "pct": 100, "title": title or e["title"]})
         except Exception as ex:
             errors.append(f"{vid}: {ex}")
+            # Failed Retry Queue me daalo
+            try:
+                from database import add_failed_download
+                add_failed_download(pid, vid, e.get("title", ""), e.get("url", ""), str(ex))
+            except Exception:
+                pass
     if errors and new_count == 0:
         set_profile_error(pid, "; ".join(errors[:3]))
     else:

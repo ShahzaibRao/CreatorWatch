@@ -1,0 +1,41 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Dead Account Cleaner — CreatorWatch</title>
+<link rel="stylesheet" href="/static/style.css"></head>
+<body>
+<div class="wrap">
+  <div class="topbar"><a href="/" class="btn ghost">← Dashboard</a><h1>🎯 Dead Account Cleaner</h1></div>
+  <p style="color:var(--muted)">Ye profiles <b>5+ bar lagatar fail</b> hue aur <b>7 din se</b> koi successful download nahi hui. Inko hatao ya dobara chance do.</p>
+  {% if dead %}
+  <table class="tbl">
+    <thead><tr><th>Profile</th><th>Platform</th><th>Fails</th><th>Last Error</th><th>Days Dead</th><th></th></tr></thead>
+    <tbody>
+    {% for p in dead %}
+    <tr id="row-{{ p.id }}">
+      <td><b>{{ p.name }}</b></td>
+      <td>{{ p.platform }}</td>
+      <td style="color:#ff4444"><b>{{ p.fail_count }}</b></td>
+      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ p.last_error }}">{{ (p.last_error or '')[:120] }}</td>
+      <td>{{ p.days_dead }} din</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn ghost" onclick="resetOne({{ p.id }}, this)">🔄 Dobara Chance</button>
+        <button class="btn ghost" style="color:#ff4444" onclick="delOne({{ p.id }}, this)">🗑️ Hatao</button>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty" style="margin-top:30px">✅ Koi dead account nahi — sab profiles zinda hain!</div>
+  {% endif %}
+</div>
+<script>
+function resetOne(pid, btn){
+  btn.textContent='⏳...';
+  fetch('/dead/reset/'+pid,{method:'POST'}).then(function(){ document.getElementById('row-'+pid).remove(); });
+}
+function delOne(pid, btn){
+  if(!confirm('Is profile ko delete kar dun?')) return;
+  fetch('/api/delete/'+pid,{method:'POST'}).then(function(){ document.getElementById('row-'+pid).remove(); });
+}
+</script>
+</body></html>

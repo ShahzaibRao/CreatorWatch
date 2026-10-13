@@ -30,6 +30,22 @@ def init_db():
         method TEXT DEFAULT 'auto'
     )
     """)
+    # Failed Retry Queue — jo videos fail hui, dobara try ke liye
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS failed_downloads (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        profile_id INTEGER NOT NULL,
+        video_id TEXT NOT NULL,
+        title TEXT DEFAULT '',
+        url TEXT DEFAULT '',
+        error TEXT DEFAULT '',
+        attempts INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT '',
+        last_retry TEXT DEFAULT '',
+        status TEXT DEFAULT 'pending',
+        UNIQUE(profile_id, video_id)
+    )
+    """)
     # migration for old DBs
     for col, ddl in [
         ("interval_minutes", "ALTER TABLE profiles ADD COLUMN interval_minutes INTEGER DEFAULT 15"),
@@ -594,3 +610,78 @@ def mark_profile_seen(pid):
     conn.execute("UPDATE videos SET seen=1 WHERE profile_id=? AND seen=0", (pid,))
     conn.commit()
     conn.close()
+
+# ---- Failed Retry Queue ----
+def add_failed_download(pid, video_id, title="", url="", error=""):
+    """Failed video ko retry queue me daalo (duplicate nahi, attempts badhao)."""
+    from datetime import datetime
+    conn = get_conn()
+    now = datetime.now().isoformat()
+    existing = conn.execute(
+        "SELECT id, attempts FROM failed_downloads WHERE profile_id=? AND video_id=? AND status='pending'",
+        (pid, video_id)).fetchone()
+    if existing:
+        conn.execute("UPDATE failed_downloads SET attempts=attempts+1, error=?, last_retry=? WHERE id=?",
+                     (error[:500], now, existing["id"]))
+    else:
+        conn.execute("INSERT INTO failed_downloads (profile_id, video_id, title, url, error, created_at, last_retry) VALUES (?,?,?,?,?,?,?)",
+                     (pid, video_id, title[:200], url, error[:500], now, now))
+    conn.commit()
+    conn.close()
+
+def get_failed_downloads(status="pending"):
+    """Retry queue ki list."""
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT f.*, p.name as profile_name, p.platform FROM failed_downloads f
+        JOIN profiles p ON p.id = f.profile_id
+        WHERE f.status=? ORDER BY f.created_at DESC
+    """, (status,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def mark_failed_done(fid):
+    conn = get_conn()
+    conn.execute("UPDATE failed_downloads SET status='done' WHERE id=?", (fid,))
+    conn.commit()
+    conn.close()
+
+def clear_failed_downloads():
+    conn = get_conn()
+    conn.execute("DELETE FROM failed_downloads WHERE status='pending'")
+    conn.commit()
+    conn.close()
+
+def get_failed_count():
+    conn = get_conn()
+    row = conn.execute("SELECT COUNT(*) as c FROM failed_downloads WHERE status='pending'").fetchone()
+    conn.close()
+    return row["c"] if row else 0
+
+# ---- Dead Account Cleaner ----
+def get_dead_profiles(min_fails=5, days_no_success=7):
+    """Lagatar fail hone wale profiles — fail_count >= min_fails ya
+    7 din se koi successful download nahi."""
+    from datetime import datetime, timedelta
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT p.*, (SELECT MAX(downloaded_at) FROM videos v
+                     WHERE v.profile_id=p.id AND v.status='done') as last_success
+        FROM profiles p WHERE p.status != 'deleted' ORDER BY p.fail_count DESC
+    """).fetchall()
+    conn.close()
+    cutoff = (datetime.now() - timedelta(days=days_no_success)).isoformat()
+    dead = []
+    for r in rows:
+        d = dict(r)
+        last_ok = d.get("last_success") or ""
+        no_success = (not last_ok) or (last_ok < cutoff)
+        if d.get("fail_count", 0) >= min_fails and no_success:
+            # Kitne din se dead?
+            try:
+                lc = datetime.fromisoformat(d.get("last_check") or "")
+                d["days_dead"] = (datetime.now() - lc).days
+            except Exception:
+                d["days_dead"] = 0
+            dead.append(d)
+    return dead

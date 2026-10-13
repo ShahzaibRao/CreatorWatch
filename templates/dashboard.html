@@ -198,6 +198,8 @@ th[onclick]:hover{color:var(--accent)}
     </div>
     <div class="topbtns">
       <span id="proxyHealth" class="pill" style="cursor:pointer" title="Proxy health" onclick="showProxyHealth()">🟢 Proxy</span>
+      <a href="/retry" class="theme-btn" title="Failed downloads retry karo">🔄 Retry</a>
+      <a href="/dead" class="theme-btn" title="Dead accounts saaf karo">🎯 Dead</a>
       <div class="bellwrap">
       <button class="theme-btn" id="bellBtn" aria-label="Notifications">🔔<span class="bellcount" id="bellCount" {% if not unseen %}style="display:none"{% endif %}>{{ unseen|length }}</span></button>
       <div class="bellpanel" id="bellPanel">

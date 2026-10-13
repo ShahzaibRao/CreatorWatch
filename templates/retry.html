@@ -1,0 +1,51 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Failed Retry Queue — CreatorWatch</title>
+<link rel="stylesheet" href="/static/style.css"></head>
+<body>
+<div class="wrap">
+  <div class="topbar"><a href="/" class="btn ghost">← Dashboard</a><h1>🔄 Failed Retry Queue</h1></div>
+  {% if failed %}
+  <div style="display:flex;gap:10px;margin:16px 0">
+    <button class="btn" onclick="retryAll(this)">🔄 Sab Retry Karo ({{ failed|length }})</button>
+    <button class="btn ghost" onclick="clearAll(this)">🗑️ Queue Saaf Karo</button>
+  </div>
+  <table class="tbl">
+    <thead><tr><th>Video</th><th>Profile</th><th>Error</th><th>Attempts</th><th>Fail Hui</th><th></th></tr></thead>
+    <tbody>
+    {% for f in failed %}
+    <tr id="row-{{ f.id }}">
+      <td><b>{{ f.title or f.video_id }}</b></td>
+      <td>{{ f.profile_name }} · {{ f.platform }}</td>
+      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ f.error }}">{{ f.error[:120] }}</td>
+      <td>{{ f.attempts }}</td>
+      <td>{{ f.created_at[:16].replace('T',' ') }}</td>
+      <td><button class="btn ghost" onclick="retryOne({{ f.id }}, this)">🔄 Retry</button></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty" style="margin-top:30px">✅ Koi failed download nahi — sab theek hai!</div>
+  {% endif %}
+</div>
+<script>
+function retryOne(fid, btn){
+  btn.textContent='⏳...'; btn.disabled=true;
+  fetch('/retry/'+fid,{method:'POST'}).then(function(r){return r.json()}).then(function(d){
+    if(d.ok){ document.getElementById('row-'+fid).remove(); }
+    else { btn.textContent='❌ '+d.error; btn.disabled=false; }
+  });
+}
+function retryAll(btn){
+  btn.textContent='⏳ Retry ho raha hai...'; btn.disabled=true;
+  fetch('/retry/all',{method:'POST'}).then(function(r){return r.json()}).then(function(d){
+    alert(d.count+' videos retry queue me daal di — thodi der me check karo!');
+    location.reload();
+  });
+}
+function clearAll(btn){
+  if(!confirm('Saari failed entries saaf kar dun?')) return;
+  fetch('/retry/clear',{method:'POST'}).then(function(){ location.reload(); });
+}
+</script>
+</body></html>
