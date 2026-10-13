@@ -1,32 +1,48 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>Failed Retry Queue — CreatorWatch</title>
-<link rel="stylesheet" href="/static/style.css"></head>
-<body>
-<div class="wrap">
-  <div class="topbar"><a href="/" class="btn ghost">← Dashboard</a><h1>🔄 Failed Retry Queue</h1></div>
-  {% if failed %}
-  <div style="display:flex;gap:10px;margin:16px 0">
-    <button class="btn" onclick="retryAll(this)">🔄 Sab Retry Karo ({{ failed|length }})</button>
-    <button class="btn ghost" onclick="clearAll(this)">🗑️ Queue Saaf Karo</button>
-  </div>
-  <table class="tbl">
-    <thead><tr><th>Video</th><th>Profile</th><th>Error</th><th>Attempts</th><th>Fail Hui</th><th></th></tr></thead>
-    <tbody>
-    {% for f in failed %}
-    <tr id="row-{{ f.id }}">
-      <td><b>{{ f.title or f.video_id }}</b></td>
-      <td>{{ f.profile_name }} · {{ f.platform }}</td>
-      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ f.error }}">{{ f.error[:120] }}</td>
-      <td>{{ f.attempts }}</td>
-      <td>{{ f.created_at[:16].replace('T',' ') }}</td>
-      <td><button class="btn ghost" onclick="retryOne({{ f.id }}, this)">🔄 Retry</button></td>
-    </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <div class="empty" style="margin-top:30px">✅ Koi failed download nahi — sab theek hai!</div>
-  {% endif %}
+<html lang="en" data-theme="dark">
+<head><link rel="icon" href="/app-icon.png"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🔄 Retry Queue — CreatorWatch</title>
+<style>
+:root{--bg:#0b0f14;--surface:#12181f;--border:#212b36;--text:#e8edf2;--muted:#93a0b0;--accent:#12b981;--warn:#f5a524;--danger:#f0524f;--info:#3b9eff;--r:14px}
+[data-theme="light"]{--bg:#eef1f4;--surface:#fff;--border:#dfe6ec;--text:#101820;--muted:#5d6b7a}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui;background:var(--bg);color:var(--text)}
+.wrap{max-width:1000px;margin:0 auto;padding:20px 16px 60px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+h1{font-size:20px;margin:0}
+a{color:var(--info);text-decoration:none}
+.btn{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 16px;cursor:pointer;font-size:14px;font-weight:600}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn:disabled{opacity:.5}
+table{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface);border-radius:var(--r);overflow:hidden}
+td,th{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left}
+th{color:var(--muted);font-weight:600}
+.empty{text-align:center;padding:40px;color:var(--muted);font-size:15px;background:var(--surface);border-radius:var(--r)}
+</style></head>
+<body><div class="wrap">
+<div class="top"><a href="/">← Dashboard</a><h1>🔄 Failed Retry Queue</h1><span></span></div>
+{% if failed %}
+<div style="display:flex;gap:10px;margin:16px 0">
+  <button class="btn" onclick="retryAll(this)">🔄 Sab Retry Karo ({{ failed|length }})</button>
+  <button class="btn ghost" onclick="clearAll(this)">🗑️ Queue Saaf Karo</button>
+</div>
+<table>
+  <thead><tr><th>Video</th><th>Profile</th><th>Error</th><th>Attempts</th><th>Fail Hui</th><th></th></tr></thead>
+  <tbody>
+  {% for f in failed %}
+  <tr id="row-{{ f.id }}">
+    <td><b>{{ f.title or f.video_id }}</b></td>
+    <td>{{ f.profile_name }} · {{ f.platform }}</td>
+    <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ f.error }}">{{ f.error[:120] }}</td>
+    <td>{{ f.attempts }}</td>
+    <td>{{ f.created_at[:16].replace('T',' ') }}</td>
+    <td><button class="btn ghost" onclick="retryOne({{ f.id }}, this)">🔄 Retry</button></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">✅ Koi failed download nahi — sab theek hai!</div>
+{% endif %}
 </div>
 <script>
 function retryOne(fid, btn){
