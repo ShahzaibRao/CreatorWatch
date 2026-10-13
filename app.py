@@ -1172,6 +1172,75 @@ def dead_reset(pid):
     conn.close()
     return jsonify({"ok": True})
 
+@app.route("/bulk_import", methods=["GET", "POST"])
+def bulk_import():
+    """Bulk Import — kai profiles ek sath add karo."""
+    if request.method == "GET":
+        return render_template("bulk_import.html", lic=lic.cached_status(db))
+
+    # POST: lines parse karo
+    text = request.form.get("text", "") or ""
+    default_interval = int(request.form.get("interval", "15") or 15)
+    default_quality = request.form.get("quality", "720p") or "720p"
+    default_interval = max(5, min(default_interval, 1440))
+
+    existing_urls = {p["url"].strip().lower() for p in db.get_profiles()}
+    parsed, skipped = [], []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = [p.strip() for p in line.split(",")]
+        url = ""
+        name = ""
+        interval = default_interval
+        quality = default_quality
+        # Format: url  |  name,url  |  name,url,interval,quality
+        if len(parts) == 1:
+            url = parts[0]
+        elif len(parts) >= 2:
+            name, url = parts[0], parts[1]
+            if len(parts) >= 3:
+                try:
+                    interval = max(5, min(int(parts[2]), 1440))
+                except ValueError:
+                    pass
+            if len(parts) >= 4 and parts[3] in ("best", "1080p", "720p", "480p", "360p"):
+                quality = parts[3]
+        if not url or "://" not in url:
+            skipped.append((line, "URL nahi lagi"))
+            continue
+        if url.strip().lower() in existing_urls:
+            skipped.append((line, "Pehle se maujood"))
+            continue
+        # Name auto-generate agar nahi diya
+        if not name:
+            from urllib.parse import urlparse
+            import re as _re
+            path = urlparse(url).path.strip("/").split("/")[0]
+            name = _re.sub(r"[^a-zA-Z0-9_.-]", "_", path or "prospect")[:50] or "prospect"
+        parsed.append({"name": name, "url": url, "interval": interval, "quality": quality})
+
+    # Confirm step?
+    if request.form.get("confirm") != "1":
+        return render_template("bulk_import.html", preview=parsed, skipped=skipped,
+                               lic=lic.cached_status(db),
+                               text=text, interval=default_interval, quality=default_quality)
+
+    # Actually add karo
+    added = 0
+    from downloader import detect_scope, prospect_folder
+    for item in parsed:
+        platform = detect_platform(item["url"])
+        scope = detect_scope(item["url"])
+        folder = prospect_folder(item["name"], platform)
+        pid = db.add_profile(item["name"], platform, item["url"], folder,
+                             item["interval"], item["quality"], scope, "auto")
+        if pid:
+            added += 1
+            submit(pid, first=True)
+    return redirect(url_for("dashboard", msg=f"{added} profiles add ho gaye!", ok="1"))
+
 @app.route("/stats")
 def stats_page():
     stats = db.get_stats()

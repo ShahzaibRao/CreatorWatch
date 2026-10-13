@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head><link rel="icon" href="/app-icon.png"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>📥 Bulk Import — CreatorWatch</title>
+<style>
+:root{--bg:#0b0f14;--surface:#12181f;--border:#212b36;--text:#e8edf2;--muted:#93a0b0;--accent:#12b981;--warn:#f5a524;--danger:#f0524f;--info:#3b9eff;--r:14px}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui;background:var(--bg);color:var(--text)}
+.wrap{max-width:900px;margin:0 auto;padding:20px 16px 60px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+h1{font-size:20px;margin:0}
+a{color:var(--info);text-decoration:none}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:14px}
+.card h2{font-size:15px;margin:0 0 10px}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+textarea{width:100%;min-height:200px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:12px;font-family:monospace;font-size:13px;resize:vertical}
+input,select{background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px 12px;font-size:14px}
+.btn{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:11px 20px;cursor:pointer;font-size:14px;font-weight:600}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:8px 6px;border-bottom:1px solid var(--border);text-align:left}
+th{color:var(--muted);font-weight:600}
+.badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid var(--border)}
+.badge.skip{color:var(--warn)}
+code{background:var(--bg);padding:2px 6px;border-radius:4px;font-size:12px}
+</style></head>
+<body><div class="wrap">
+<div class="top"><a href="/">← Dashboard</a><h1>📥 Bulk Import</h1><span></span></div>
+
+{% if preview is defined %}
+<!-- Preview step -->
+<div class="card">
+  <h2>👀 Preview — {{ preview|length }} add honge</h2>
+  {% if preview %}
+  <table>
+    <thead><tr><th>Name</th><th>URL</th><th>Every</th><th>Quality</th></tr></thead>
+    <tbody>
+    {% for p in preview %}
+    <tr><td><b>{{ p.name }}</b></td><td>{{ p.url }}</td><td>{{ p.interval }} min</td><td>{{ p.quality }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:var(--muted)">Koi naya profile nahi mila.</p>
+  {% endif %}
+  {% if skipped %}
+  <h2 style="margin-top:16px">⏭️ Skip hue ({{ skipped|length }})</h2>
+  <table>
+    {% for line, reason in skipped %}
+    <tr><td><code>{{ line[:80] }}</code></td><td><span class="badge skip">{{ reason }}</span></td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+  <form method="POST" action="/bulk_import" style="margin-top:18px;display:flex;gap:10px">
+    <input type="hidden" name="text" value="{{ text }}">
+    <input type="hidden" name="interval" value="{{ interval }}">
+    <input type="hidden" name="quality" value="{{ quality }}">
+    <input type="hidden" name="confirm" value="1">
+    <button class="btn" type="submit">✅ Confirm — {{ preview|length }} Add Karo</button>
+    <a href="/bulk_import" class="btn ghost" style="padding:11px 20px">✏️ Edit Karo</a>
+  </form>
+</div>
+{% else %}
+<!-- Input step -->
+<div class="card">
+  <h2>📋 Profiles ki list paste karo (ek per line)</h2>
+  <p style="color:var(--muted);font-size:13px;margin:0 0 12px">
+    <b>Formats:</b><br>
+    • Sirf URL: <code>https://www.tiktok.com/@username</code><br>
+    • Name + URL: <code>mera_name,https://www.tiktok.com/@username</code><br>
+    • Full: <code>mera_name,https://www.tiktok.com/@username,30,1080p</code><br>
+    • <code>#</code> se shuru wali lines ignore hongi. Duplicates auto-skip.
+  </p>
+  <form method="POST" action="/bulk_import">
+    <textarea name="text" placeholder="https://www.tiktok.com/@creator1&#10;mera_name,https://www.youtube.com/@channel2&#10;name3,https://www.instagram.com/user3/,60,720p"></textarea>
+    <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;align-items:end">
+      <div><label>Default Every (min)</label><input type="number" name="interval" value="15" min="5" max="1440" style="width:120px"></div>
+      <div><label>Default Quality</label>
+        <select name="quality">
+          <option value="best">Best</option>
+          <option value="1080p">1080p</option>
+          <option value="720p" selected>720p</option>
+          <option value="480p">480p</option>
+          <option value="360p">360p</option>
+        </select>
+      </div>
+      <button class="btn" type="submit">👀 Preview Dekho</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+</div>
+</body></html>
