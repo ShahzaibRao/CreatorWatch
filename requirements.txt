@@ -2,7 +2,9 @@ yt-dlp>=2025.1.0
 Flask>=3.0.0
 APScheduler>=3.10.0
 imageio-ffmpeg>=0.5.0
-gallery-dl>=1.32.0
+# gallery-dl DEV version (master) — Instagram ne Oct 2026 me API badli (PolarisProfilePostsTabContentQuery_connection KeyError),
+# stable 1.32.16 me fix nahi. Jab stable me fix aa jaye to wapas `gallery-dl>=1.32.0` kar dena.
+gallery-dl @ https://codeberg.org/mikf/gallery-dl/archive/master.tar.gz
 requests>=2.31.0  # gallery-dl ki dependency — EXE me bundle (pylibs me wheel ke sath nahi ati)
 pywebview>=5.0  # desktop window (exe + `python app.py --app`)
 bgutil-ytdlp-pot-provider>=2.0  # YouTube PO-token (bot-wall bypass)
