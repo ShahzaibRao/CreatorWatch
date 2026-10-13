@@ -885,6 +885,8 @@ def settings():
             db.set_setting("proxy_platforms", ",".join(plats) if plats else "all")
             # Smart Mode toggle
             db.set_setting("smart_proxy", "1" if request.form.get("smart_proxy") else "")
+            # LAN Access toggle (phone se dashboard)
+            db.set_setting("lan_access", "1" if request.form.get("lan_access") else "")
             n = len([l for l in px.splitlines() if l.strip()])
             msg = f"Proxy set: {n} proxy, platforms: {', '.join(plats) if plats else 'all'}" if px else "Proxy hataya gaya (direct)"
         elif "downloads_root" in request.form:
@@ -913,10 +915,13 @@ def settings():
     yt_proxy = db.get_setting("yt_proxy", "") or ""
     proxy_platforms = db.get_setting("proxy_platforms", "all") or "all"
     smart_proxy = (db.get_setting("smart_proxy", "") or "") == "1"
+    lan_access = (db.get_setting("lan_access", "") or "") == "1"
+    lan_ip = _get_lan_ip()
     return render_template("settings.html", n=max_workers(), msg=msg,
                            suggestion=None, cores=_os.cpu_count() or 4,
                            root=root, free_gb=free_gb, total_gb=total_gb, yt_proxy=yt_proxy,
                            proxy_platforms=proxy_platforms, smart_proxy=smart_proxy,
+                           lan_access=lan_access, lan_ip=lan_ip,
                            lic=lic.cached_status(db))
 
 def suggest_workers(cores, ram_gb, speed_mbps):
@@ -1642,6 +1647,24 @@ def start_scheduler():
     threading.Thread(target=_pot_watcher, daemon=True).start()
     return sched
 
+def _get_lan_ip():
+    """PC ka local network IP (phone se connect karne ke liye)."""
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return ""
+
+def _lan_enabled():
+    try:
+        return db.get_setting("lan_access", "0") == "1"
+    except Exception:
+        return False
+
 if __name__ == "__main__":
     import sys as _sys
 
@@ -1674,15 +1697,21 @@ if __name__ == "__main__":
             except Exception:
                 return ""
     start_scheduler()
-    print("Dashboard: http://127.0.0.1:5000")
+    _host = "0.0.0.0" if _lan_enabled() else "127.0.0.1"
+    print(f"Dashboard: http://{_host}:5000")
+    if _host == "0.0.0.0":
+        _lan = _get_lan_ip()
+        if _lan:
+            print(f"📱 Phone se: http://{_lan}:5000 (same WiFi)")
     print("Downloads folder: ./downloads/")
     print(f"Workers: {max_workers()} parallel profiles (per-profile sequential)")
+
     use_gui = is_frozen() or "--app" in _sys.argv  # exe = desktop window, source --app flag
     if use_gui:
         import webbrowser
         try:
             import webview
-            threading.Thread(target=lambda: app.run(host="127.0.0.1", port=5000, debug=False, threaded=True, use_reloader=False), daemon=True).start()
+            threading.Thread(target=lambda: app.run(host=_host, port=5000, debug=False, threaded=True, use_reloader=False), daemon=True).start()
             import urllib.request
             for _ in range(60):
                 try:
@@ -1703,6 +1732,6 @@ if __name__ == "__main__":
                 threading.Event().wait(86400 * 365)  # server thread chalti rahe
         except ImportError:
             threading.Timer(1.5, lambda: webbrowser.open("http://127.0.0.1:5000")).start()
-            app.run(host="127.0.0.1", port=5000, debug=False, threaded=True)
+            app.run(host=_host, port=5000, debug=False, threaded=True)
     else:
-        app.run(host="127.0.0.1", port=5000, debug=False, threaded=True)
+        app.run(host=_host, port=5000, debug=False, threaded=True)
