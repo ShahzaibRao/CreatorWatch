@@ -19,13 +19,13 @@
 body{margin:0;font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,"Noto Sans SC",sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
 a{color:var(--info);text-decoration:none}
 .wrap{max-width:1120px;margin:0 auto;padding:20px 18px 60px}
-.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 16px;flex-wrap:nowrap}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 16px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:12px;flex-shrink:0}
 .logo{width:42px;height:42px;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);flex:none}
 .logo img{width:100%;height:100%;display:block}
 .brand h1{font-size:19px;margin:0;letter-spacing:.2px}
 .brand p{margin:2px 0 0;font-size:12.5px;color:var(--muted)}
-.topbtns{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;margin-left:auto}
+.topbtns{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto}
 .topbtns .theme-btn,.topbtns .langsel{white-space:nowrap}
 .theme-btn{display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600}
 .theme-btn:hover{border-color:var(--accent)}
@@ -131,7 +131,7 @@ th[onclick]:hover{color:var(--accent)}
 .badge.ig{color:#c13584;border-color:rgba(193,53,132,.4)}
 .badge.tw{color:var(--info);border-color:rgba(59,158,255,.4)}
 .badge.sc{color:#f7c948;border-color:rgba(247,201,72,.4)}
-.notice{font-size:12.5px;padding:10px 14px;border-radius:10px;margin:0 0 14px;border:1px solid var(--border);background:var(--surface);color:var(--muted)}
+.notice{font-size:12.5px;padding:10px 14px;border-radius:10px;margin:0 0 14px;border:1px solid var(--border);background:var(--surface);color:var(--muted);clear:both}
 .notice b{color:var(--warn)}
 .pill{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap}
 .pill.ok{background:rgba(18,185,129,.15);color:var(--accent)}
@@ -447,8 +447,9 @@ window.selectFolder=function(){
           if(!banner){
             banner=document.createElement('div');
             banner.id='proxyDownBanner';
-            banner.style.cssText='background:#ff4444;color:#fff;padding:10px 16px;text-align:center;font-size:14px;position:fixed;top:0;left:0;right:0;z-index:9999;';
-            document.body.prepend(banner);
+            banner.style.cssText='background:#ff4444;color:#fff;padding:10px 16px;text-align:center;font-size:14px;border-radius:10px;margin:0 0 14px;';
+            var wrap=document.querySelector('.wrap');
+            if(wrap) wrap.prepend(banner);
           }
           banner.textContent='🚨 PROXY DOWN: '+downList.map(function(p){return p.proxy}).join(', ')+' — downloads is proxy se fail hongi!';
           banner.style.display='block';
