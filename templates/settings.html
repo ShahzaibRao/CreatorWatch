@@ -53,7 +53,7 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 <p class="tip">Downloads kahan save hon. Khali = default folder. Drive full ho to yahan dosri drive/folder set karo (e.g. D:\Videos).{% if free_gb is not none %} Abhi is drive me <b>{{ free_gb }} GB free</b> / {{ total_gb }} GB total.{% endif %}</p>
 <form method="post">
 <label>Downloads folder (abhi: {{ root }})</label>
-<div style="display:flex;gap:8px"><input id="rootFolder" name="downloads_root" value="{{ root }}" placeholder="📁 Select se choose karo" readonly><button type="button" class="btn ghost browse-btn" data-target="rootFolder" style="white-space:nowrap;width:auto;margin-top:0;padding:12px 14px">📁 Select</button></div>
+<div style="display:flex;gap:8px"><input id="rootFolder" name="downloads_root" value="{{ root }}" placeholder="Path likho ya Select se choose karo"><button type="button" class="btn ghost browse-btn" data-target="rootFolder" style="white-space:nowrap;width:auto;margin-top:0;padding:12px 14px">📁 Select</button></div>
 <button type="submit">💾 Save Location</button>
 </form>
 </div>
