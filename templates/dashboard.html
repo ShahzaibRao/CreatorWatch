@@ -197,6 +197,7 @@ th[onclick]:hover{color:var(--accent)}
       </div>
     </div>
     <div class="topbtns">
+      <span id="proxyHealth" class="pill" style="cursor:pointer" title="Proxy health" onclick="showProxyHealth()">🟢 Proxy</span>
       <div class="bellwrap">
       <button class="theme-btn" id="bellBtn" aria-label="Notifications">🔔<span class="bellcount" id="bellCount" {% if not unseen %}style="display:none"{% endif %}>{{ unseen|length }}</span></button>
       <div class="bellpanel" id="bellPanel">
@@ -415,8 +416,50 @@ window.selectFolder=function(){
   }
   closeFolderModal();
 };
-  setInterval(function(){
-    fetch('/api/jobs').then(function(r){return r.json()}).then(function(d){
+  // Proxy health — har 30 sec check, down ho to badge laal
+  function pollProxyHealth(){
+    fetch('/api/proxy_health').then(function(r){return r.json()}).then(function(d){
+      var el=document.getElementById('proxyHealth'); if(!el) return;
+      if(d.total===0){ el.textContent='⚪ No Proxy'; el.style.background=''; return; }
+      if(d.down>0){
+        el.textContent='🔴 '+d.down+'/'+d.total+' Proxy DOWN';
+        el.style.background='#ff4444'; el.style.color='#fff';
+        // Down alert banner (sirf ek bar per down event)
+        var downList=d.proxies.filter(function(p){return !p.up});
+        var key=downList.map(function(p){return p.proxy}).join('|');
+        if(window._proxyDownKey!==key){
+          window._proxyDownKey=key;
+          var banner=document.getElementById('proxyDownBanner');
+          if(!banner){
+            banner=document.createElement('div');
+            banner.id='proxyDownBanner';
+            banner.style.cssText='background:#ff4444;color:#fff;padding:10px 16px;text-align:center;font-size:14px;position:fixed;top:0;left:0;right:0;z-index:9999;';
+            document.body.prepend(banner);
+          }
+          banner.textContent='🚨 PROXY DOWN: '+downList.map(function(p){return p.proxy}).join(', ')+' — downloads is proxy se fail hongi!';
+          banner.style.display='block';
+        }
+      } else {
+        el.textContent='🟢 '+d.total+' Proxy OK';
+        el.style.background=''; el.style.color='';
+        window._proxyDownKey='';
+        var banner=document.getElementById('proxyDownBanner');
+        if(banner) banner.style.display='none';
+      }
+    }).catch(function(){});
+  }
+  window.showProxyHealth=function(){
+    fetch('/api/proxy_health').then(function(r){return r.json()}).then(function(d){
+      if(d.total===0){ alert('Koi proxy configure nahi'); return; }
+      var lines=d.proxies.map(function(p){
+        var ago=p.last_ok?Math.round((Date.now()/1000-p.last_ok)/60)+' min pehle OK':'kabhi nahi';
+        return (p.up?'🟢 ':'🔴 ')+p.proxy+' — '+(p.up?'UP (IP: '+(p.ip||'?')+')':'DOWN ('+p.fail+' fails, last OK: '+ago+')');
+      });
+      alert('Proxy Health:\n\n'+lines.join('\n'));
+    }).catch(function(){});
+  };
+  setInterval(pollProxyHealth, 30000);
+  pollProxyHealth();
       var jobs=d.jobs||{};
       var w=document.getElementById('workers');
       if(w) w.textContent='⚙ '+d.workers.busy+'/'+d.workers.max+' workers';

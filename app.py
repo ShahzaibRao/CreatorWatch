@@ -290,6 +290,63 @@ def submit_due():
 JOBS = {}
 JOBS_LOCK = threading.Lock()
 
+# ---- Proxy Health Monitor ----
+# Har proxy ki live health: {proxy_url: {"up": bool, "fail": int, "last_ok": ts, "last_check": ts, "ip": str}}
+PROXY_HEALTH = {}
+PROXY_HEALTH_LOCK = threading.Lock()
+
+def _mask_proxy(px):
+    """Proxy URL me se password chhupao (logs/UI ke liye)."""
+    try:
+        import re as _re
+        return _re.sub(r"://([^:]+):[^@]+@", r"://\1:***@", px)
+    except Exception:
+        return px
+
+def check_proxy_health():
+    """Sab configured proxies ki health check karo (background job).
+    2 lagatar fail → DOWN alert. Recover hone par UP."""
+    import urllib.request, time
+    try:
+        raw = (db.get_setting("yt_proxy", "") or "").strip()
+    except Exception:
+        return
+    proxies = [p.strip() for p in raw.splitlines() if p.strip()]
+    if not proxies:
+        return
+    with PROXY_HEALTH_LOCK:
+        # Hataye gaye proxies saaf karo
+        for px in list(PROXY_HEALTH.keys()):
+            if px not in proxies:
+                del PROXY_HEALTH[px]
+    for px in proxies:
+        up, ip = False, ""
+        try:
+            opener = urllib.request.build_opener(
+                urllib.request.ProxyHandler({"http": px, "https": px}))
+            with opener.open("https://api.ipify.org", timeout=10) as r:
+                ip = r.read().decode().strip()
+                up = bool(ip)
+        except Exception:
+            up = False
+        now = time.time()
+        with PROXY_HEALTH_LOCK:
+            h = PROXY_HEALTH.get(px, {"up": True, "fail": 0, "last_ok": 0, "last_check": 0, "ip": ""})
+            h["last_check"] = now
+            h["ip"] = ip if up else h.get("ip", "")
+            if up:
+                if not h["up"]:
+                    print(f"[PROXY-HEALTH] ✅ RECOVERED: {_mask_proxy(px)}")
+                h["up"] = True
+                h["fail"] = 0
+                h["last_ok"] = now
+            else:
+                h["fail"] += 1
+                if h["fail"] >= 2 and h["up"]:
+                    h["up"] = False
+                    print(f"[PROXY-HEALTH] 🔴 DOWN: {_mask_proxy(px)} ({h['fail']} fails)")
+            PROXY_HEALTH[px] = h
+
 def start_job(pid, kind):
     with JOBS_LOCK:
         JOBS[pid] = {"state": "active", "kind": kind, "stage": "start",
@@ -1007,6 +1064,24 @@ def settings_apply():
                            proxy_platforms=db.get_setting("proxy_platforms", "all") or "all",
                            smart_proxy=(db.get_setting("smart_proxy", "") or "") == "1")
 
+@app.route("/api/proxy_health")
+def api_proxy_health():
+    """Proxy health status (dashboard badge ke liye)."""
+    import time
+    with PROXY_HEALTH_LOCK:
+        items = []
+        for px, h in PROXY_HEALTH.items():
+            items.append({
+                "proxy": _mask_proxy(px),
+                "up": h.get("up", True),
+                "fail": h.get("fail", 0),
+                "ip": h.get("ip", ""),
+                "last_ok": h.get("last_ok", 0),
+                "last_check": h.get("last_check", 0),
+            })
+    down = sum(1 for i in items if not i["up"])
+    return jsonify({"total": len(items), "down": down, "proxies": items})
+
 @app.route("/api/notifications")
 def api_notifications():
     items = db.get_unseen(20)
@@ -1388,6 +1463,12 @@ def start_scheduler():
     sched = BackgroundScheduler(daemon=True)
     # har 1 min me due profiles pool me submit (max limit, busy skip)
     sched.add_job(submit_due, "interval", minutes=1, id="auto_check")
+    # har 5 min me proxy health check (down alert ke liye)
+    sched.add_job(check_proxy_health, "interval", minutes=5, id="proxy_health")
+    # Pehli health check jaldi (30 sec baad)
+    sched.add_job(check_proxy_health, "date",
+                  run_date=__import__("datetime").datetime.now() + __import__("datetime").timedelta(seconds=30),
+                  id="proxy_health_first")
     sched.start()
     # POT server pehle se installed ho to khud start (YouTube wall ke liye)
     try:
