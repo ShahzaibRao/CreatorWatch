@@ -462,6 +462,8 @@ window.selectFolder=function(){
   };
   setInterval(pollProxyHealth, 30000);
   pollProxyHealth();
+  setInterval(function(){
+    fetch('/api/jobs').then(function(r){return r.json()}).then(function(d){
       var jobs=d.jobs||{};
       var w=document.getElementById('workers');
       if(w) w.textContent='⚙ '+d.workers.busy+'/'+d.workers.max+' workers';
