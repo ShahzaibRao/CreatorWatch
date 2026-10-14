@@ -39,19 +39,16 @@ def open_folder(path):
         pass
 
 
-_toaster = None  # lazy singleton: one WindowsToaster per process
-
-
 def _windows_toast(title, lines, folder):
-    global _toaster
+    # Har bar NAYA toaster — singleton alag threads par COM issue deta hai
+    # (test Flask thread par kaam karta, download daemon thread par fail).
     from windows_toasts import WindowsToaster, Toast
-    if _toaster is None:
-        _toaster = WindowsToaster(_APP)
+    toaster = WindowsToaster(_APP)
     t = Toast()
     t.text_fields = [title] + lines[:2]
     if folder:
         t.on_activated = lambda _: open_folder(folder)
-    _toaster.show_toast(t)
+    toaster.show_toast(t)
 
 
 def _linux_toast(title, lines):
