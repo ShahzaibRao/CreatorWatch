@@ -511,8 +511,10 @@ def _toast_done(p, new):
     # NOTE: p["folder"] DB me pehle se resolved full path hai — isay dobara
     # prospect_folder() me dalna base+platform+name double kar dega.
     folder = p.get("folder") or ""
+    print(f"[TOAST] download_complete call: {p['name']} new={new}", flush=True)
     try:
         notify.download_complete(p["name"], new, folder)
+        print(f"[TOAST] sent OK", flush=True)
     except Exception as e:
         print(f"[TOAST FAIL] {e}", flush=True)
 
