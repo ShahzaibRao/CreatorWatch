@@ -23,6 +23,7 @@ a{color:var(--info);text-decoration:none}
 .navrow{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;overflow-x:auto;padding:0 0 14px;scrollbar-width:none}
 .navrow::-webkit-scrollbar{display:none}
 .navrow .theme-btn,.navrow .langsel{flex-shrink:0}
+.navrow .langsel{width:auto;max-width:130px}
 .brand{display:flex;align-items:center;gap:12px;flex-shrink:0}
 .logo{width:42px;height:42px;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);flex:none}
 .logo img{width:100%;height:100%;display:block}
@@ -32,7 +33,7 @@ a{color:var(--info);text-decoration:none}
 .topbtns .theme-btn,.topbtns .langsel{white-space:nowrap}
 .theme-btn{display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600}
 .theme-btn:hover{border-color:var(--accent)}
-select.langsel{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:9px 12px;font-size:13px;font-weight:600;cursor:pointer}
+select.langsel{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:9px 12px;font-size:13px;font-weight:600;cursor:pointer;width:auto;max-width:140px}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:6px 0 16px}
 .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:15px 16px;display:flex;gap:12px;align-items:center;box-shadow:var(--shadow)}
 .stat .ic{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}

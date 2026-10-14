@@ -1463,9 +1463,13 @@ def check_profile(profile: dict, progress=None):
                                      progress=(lambda u, b=base: progress({**b, **u})) if progress else None,
                                      method=method, title=e.get("title", ""))
             if fp == folder:
-                # text-only post (koi media nahi) — skip mark taake retry loop na ho
-                from database import mark_seen
-                mark_seen(pid, vid, title or e["title"])
+                # Koi file nahi bani — FAIL hai, SEEN NAHI!
+                # Pehle yahan mark_seen hota tha → video hamesha ke liye skip ho jati thi.
+                # Ab retry queue me daalo taake dobara try ho.
+                from database import add_failed_download
+                add_failed_download(pid, vid, e.get("title", ""), e.get("url", ""),
+                                    "Download se koi file nahi bani (media expire ya temporary masla)")
+                errors.append(f"{vid}: download se koi file nahi bani")
                 continue
             size = os.path.getsize(fp) if os.path.exists(fp) else 0
             add_video(pid, vid, title or e["title"], fp, size)

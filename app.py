@@ -840,6 +840,13 @@ def check_one(pid):
     submit(pid)
     return redirect(url_for("dashboard"))
 
+@app.route("/api/rescan/<int:pid>", methods=["POST"])
+def api_rescan(pid):
+    """Skipped videos ko wapas lao + check karo (download fail hui videos dobara try)."""
+    n = db.clear_skipped(pid)
+    submit(pid)
+    return jsonify({"ok": True, "cleared": n})
+
 @app.route("/api/check/<int:pid>", methods=["POST"])
 def api_check_one(pid):
     """AJAX check — bina page reload."""

@@ -313,6 +313,15 @@ def video_exists(profile_id, video_id):
     conn.close()
     return row is not None  # done ho ya skipped — dobara kabhi download nahi hogi
 
+def clear_skipped(profile_id):
+    """Skipped (kabhi download na hui) videos ko DB se hatao — agli check me dobara try hongi."""
+    conn = get_conn()
+    cur = conn.execute("DELETE FROM videos WHERE profile_id=? AND status='skipped'", (profile_id,))
+    n = cur.rowcount
+    conn.commit()
+    conn.close()
+    return n
+
 def mark_seen(profile_id, video_id, title=""):
     """Purani video ko bina download kiye 'dekha hua' mark karo — phir kabhi download nahi hogi."""
     conn = get_conn()
