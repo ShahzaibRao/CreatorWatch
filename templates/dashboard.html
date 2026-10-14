@@ -219,7 +219,7 @@ th[onclick]:hover{color:var(--accent)}
         <div class="bh"><span>{{ t('bell_title') }}</span><a href="/notifications/read" style="font-size:12px">{{ t('bell_read') }}</a></div>
         <div id="bellList">
           {% for v in unseen %}
-          <div class="bi"><b>{{ v.title }}</b><br><small>{{ v.profile_name }} · {{ v.platform }} · {{ v.downloaded_at[:16].replace('T',' ') }}</small></div>
+          <div class="bi" onclick="bellClick({{ v.id }}, {{ v.profile_id }}, this)" style="cursor:pointer" title="Folder kholo + read mark karo"><b>{{ v.title }}</b><br><small>{{ v.profile_name }} · {{ v.platform }} · {{ v.downloaded_at[:16].replace('T',' ') }}</small></div>
           {% endfor %}
           {% if not unseen %}<div class="bi"><small>{{ t('bell_empty') }}</small></div>{% endif %}
         </div>
@@ -593,6 +593,37 @@ window.selectFolder=function(){
         updateBulk(); renderPros();
       }
     });
+  };
+  // Bell item click — folder kholo + har jagah se NEW hatao
+  window.bellClick=function(vid, profileId, el){
+    // 1. Folder kholo + DB me seen mark (API already karta hai)
+    fetch('/api/open_video_folder/'+vid,{method:'POST'}).catch(function(){});
+    // 2. Bell se item hatao
+    if(el) el.remove();
+    // 3. Bell count update
+    var bc=document.getElementById('bellCount');
+    if(bc){
+      var n=parseInt(bc.textContent||'0',10)-1;
+      if(n<=0){ bc.style.display='none'; }
+      else { bc.textContent=n; }
+    }
+    // Agar bell khaali to empty msg dikhao
+    var bl=document.getElementById('bellList');
+    if(bl && bl.children.length===0){
+      bl.innerHTML='<div class="bi"><small>{{ t('bell_empty') }}</small></div>';
+    }
+    // 4. Prospect row se NEW pill hatao
+    var row=document.querySelector('tr[data-pid="'+profileId+'"]');
+    if(row){ var pill=row.querySelector('.pill.new'); if(pill) pill.remove(); }
+    // 5. Recent Downloads se NEW pill hatao (is video ka)
+    var ritems=document.querySelectorAll('.ritem');
+    for(var i=0;i<ritems.length;i++){
+      var oc=ritems[i].getAttribute('onclick')||'';
+      if(oc.indexOf('openVideoFolder('+vid+')')!==-1){
+        var rp=ritems[i].querySelector('.pill.new'); if(rp) rp.remove();
+        break;
+      }
+    }
   };
   // Video ki folder kholo
   window.openVideoFolder=function(vid){
