@@ -933,7 +933,19 @@ def snap_fetch(profile_url: str, limit: int = 10):
             with urllib.request.urlopen(req, timeout=30) as r:
                 html = r.read().decode("utf-8", errors="ignore")
     except Exception as e:
-        raise Exception(f"Snapchat page nahi khuli [{type(e).__name__}: {e}]")
+        # 1 retry (network glitch ke liye)
+        try:
+            import time as _t
+            _t.sleep(2)
+            if handlers:
+                opener = urllib.request.build_opener(*handlers)
+                with opener.open(req, timeout=30) as r:
+                    html = r.read().decode("utf-8", errors="ignore")
+            else:
+                with urllib.request.urlopen(req, timeout=30) as r:
+                    html = r.read().decode("utf-8", errors="ignore")
+        except Exception as e2:
+            raise Exception(f"Snapchat page nahi khuli [{type(e2).__name__}: {e2}]")
 
     m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>',
                   html, re.DOTALL)
@@ -988,7 +1000,18 @@ def snap_fetch(profile_url: str, limit: int = 10):
             break
 
     if not entries:
-        raise Exception("koi snap nahi mili — profile me public Spotlight/Stories nahi?")
+        # Profile khulta hai lekin content nahi — Snapchat web par kuch profiles
+        # ka content app-only hota hai (web par nahi dikhata). Ye app ka bug nahi.
+        prof = pp.get("userProfile") or {}
+        uname = ""
+        try:
+            info = prof.get("publicProfileInfo") or {}
+            uname = info.get("username") or info.get("title") or user
+        except Exception:
+            uname = user
+        raise Exception(f"@{uname}: Snapchat web par koi public content nahi mila — "
+                        f"ye creator shayad app-only hai (web par Spotlight/Stories nahi dikhata). "
+                        f"Browser me snapchat.com/@{user} khol ke check karo.")
     return entries
 
 def snap_download(media_url: str, folder: str, title: str = "", media_type: str = ""):
