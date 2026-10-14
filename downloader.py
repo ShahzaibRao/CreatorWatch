@@ -1435,9 +1435,13 @@ def check_profile(profile: dict, progress=None):
         set_profile_error(pid, msg)
         return 0, [msg]
     if not entries:
-        msg = _friendly_error(profile, "Koi video nahi mili (profile empty ya login required)")
-        set_profile_error(pid, msg)
-        return 0, [msg]
+        # Khaali = "abhi koi naya content nahi", ERROR nahi!
+        # Pehle isko failure gin rahe the → 3 bar khaali = 3h auto-pause →
+        # auto-check skip, lekin manual check kaam karta (pause bypass).
+        # Ab sirf last_check update karo, fail_count NA badhao.
+        from database import update_last_check
+        update_last_check(pid)
+        return 0, []
 
     fresh = [e for e in entries if not video_exists(pid, e["id"])]
     new_count = 0

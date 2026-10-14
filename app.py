@@ -261,6 +261,14 @@ def run_check(pid):
         new, errs = check_profile(p, progress=job_cb(pid))
         if new:
             _toast_done(p, new)
+            # Kamiyab check → auto-pause clear karo (agar lagi thi)
+            try:
+                conn = db.get_conn()
+                conn.execute("UPDATE profiles SET status='active', auto_paused_until='', fail_count=0 WHERE id=?", (pid,))
+                conn.commit()
+                conn.close()
+            except Exception:
+                pass
         finish_job(pid, f"{new} new" if new else (errs[0][:120] if errs else "koi fresh upload nahi"))
     except Exception as e:
         finish_job(pid, f"fail: {e}")
