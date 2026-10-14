@@ -85,10 +85,24 @@ select.langsel{border:1px solid var(--border);background:var(--surface);color:va
 <div style="display:flex;gap:8px;margin-top:8px">
 <button type="submit">💾 Save Proxy</button>
 <button type="button" onclick="testProxy()" style="background:#3b9eff">🔍 Test Proxy</button>
+<button type="button" onclick="testToast()" style="background:#9b59b6">🔔 Test Notification</button>
 </div>
 </form>
 <div id="proxyResult" style="margin-top:8px;font-size:13px"></div>
+<div id="toastResult" style="margin-top:8px;font-size:13px"></div>
 <script>
+function testToast(){
+  var el = document.getElementById('toastResult');
+  el.innerHTML = '⏳ Notification bhej rahe hain...';
+  el.style.color = '';
+  fetch('/settings/test_toast', {method:'POST'})
+    .then(r=>r.json())
+    .then(d=>{
+      el.innerHTML = (d.ok ? '✅ ' : '❌ ') + d.msg.replace(/\n/g,'<br>');
+      el.style.color = d.ok ? '#12b981' : '#f0524f';
+    })
+    .catch(e=>{ el.innerHTML='❌ '+e; el.style.color='#f0524f'; });
+}
 function testProxy(){
   var px = document.querySelector('textarea[name="yt_proxy"]').value.trim();
   var el = document.getElementById('proxyResult');

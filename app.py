@@ -951,6 +951,24 @@ def suggest_workers(cores, ram_gb, speed_mbps):
            "by_net": "Net speed (har worker ~10 Mbps)"}[neck]
     return {"n": best, "by_cpu": by_cpu, "by_ram": by_ram, "by_net": by_net, "why": why}
 
+@app.route("/settings/test_toast", methods=["POST"])
+def test_toast():
+    """Windows notification test karo — asal error dikhao agar fail ho."""
+    try:
+        import notify
+        # Direct call (thread ke baghair) taake error pakra ja sake
+        import platform
+        if platform.system() == "Windows":
+            notify._windows_toast("🔔 CreatorWatch Test",
+                                  ["Ye test notification hai", "Agar dikh rahi hai to sab theek hai!"],
+                                  "")
+            return {"ok": True, "msg": "Toast bheja gaya — Windows me dikhna chahiye!"}
+        else:
+            return {"ok": False, "msg": "Ye test sirf Windows par kaam karta hai"}
+    except Exception as e:
+        import traceback
+        return {"ok": False, "msg": f"Toast FAIL: {type(e).__name__}: {e}\n{traceback.format_exc()[:500]}"}
+
 @app.route("/settings/test_proxy", methods=["POST"])
 def test_proxy():
     """Sab proxies test karo — IP + har platform accessible hai ya nahi."""
