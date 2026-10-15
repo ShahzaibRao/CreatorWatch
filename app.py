@@ -507,12 +507,11 @@ def _setup_tray(win):
     return True
 
 def _toast_done(p, new):
-    """Download-complete popup (cloud branch). Never breaks the worker."""
-    # NOTE: p["folder"] DB me pehle se resolved full path hai — isay dobara
-    # prospect_folder() me dalna base+platform+name double kar dega.
+    """Download-complete popup (cloud branch). Never breaks the worker.
+    Batched: kai downloads ek sath hon to ek summary notification."""
     folder = p.get("folder") or ""
     try:
-        notify.download_complete(p["name"], new, folder)
+        notify.download_complete_batched(p["name"], new, folder)
     except Exception as e:
         print(f"[TOAST FAIL] {e}", flush=True)
 

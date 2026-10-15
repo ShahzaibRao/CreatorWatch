@@ -87,3 +87,54 @@ def download_complete(profile_name, count, folder=""):
         return
     threading.Thread(target=_notify, args=(profile_name, count, folder or ""),
                      daemon=True, name="toast").start()
+
+
+# ---- Batched notifications ----
+# Kai prospects ek sath download karein to 20+ toasts Windows suppress kar deta hai.
+# Is liye queue me jama karo, har 20 sec me EK summary toast bhejo.
+_BATCH = []  # [(profile_name, count, folder), ...]
+_BATCH_LOCK = threading.Lock()
+_BATCH_THREAD_STARTED = False
+
+def download_complete_batched(profile_name, count, folder=""):
+    """Queue me daalo — background thread har 20 sec me summary bhejega."""
+    global _BATCH_THREAD_STARTED
+    if not count:
+        return
+    with _BATCH_LOCK:
+        _BATCH.append((profile_name, count, folder or ""))
+        if not _BATCH_THREAD_STARTED:
+            _BATCH_THREAD_STARTED = True
+            threading.Thread(target=_batch_worker, daemon=True, name="toast-batch").start()
+
+def _batch_worker():
+    """Har 20 sec: queue khaali karo, ek summary toast bhejo."""
+    import time
+    while True:
+        time.sleep(20)
+        with _BATCH_LOCK:
+            items = _BATCH[:]
+            _BATCH.clear()
+        if not items:
+            continue
+        try:
+            total = sum(c for _, c, _ in items)
+            if len(items) == 1:
+                # Sirf ek prospect — purana style
+                name, count, folder = items[0]
+                _notify(name, count, folder)
+            else:
+                # Kai prospects — summary
+                names = ", ".join(n for n, _, _ in items[:3])
+                if len(items) > 3:
+                    names += f" +{len(items)-3} aur"
+                title = f"\U0001F4E5 {len(items)} prospects se {total} nayi videos"
+                lines = [names, "Click karo (pehle wale ka folder khulega)"]
+                # Pehle wale ka folder (click par)
+                first_folder = items[0][2]
+                if platform.system() == "Windows":
+                    _windows_toast(title, lines, first_folder)
+                else:
+                    _linux_toast(title, lines)
+        except Exception as e:
+            print(f"[TOAST BATCH FAIL] {e}", flush=True)
