@@ -35,11 +35,17 @@ a{color:var(--info);text-decoration:none}
 .theme-btn:hover{border-color:var(--accent)}
 select.langsel{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:9px 12px;font-size:13px;font-weight:600;cursor:pointer;width:auto;max-width:140px}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:6px 0 16px}
-.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:15px 16px;display:flex;gap:12px;align-items:center;box-shadow:var(--shadow)}
+.stat{background:linear-gradient(135deg,var(--surface) 0%,var(--surface2) 100%);border:1px solid var(--border);border-radius:var(--r);padding:16px;display:flex;gap:13px;align-items:center;box-shadow:var(--shadow);transition:transform .15s,box-shadow .15s}
+.stat:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.25)}
 .stat .ic{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .stat .ic svg{width:20px;height:20px}
 .stat small{display:block;color:var(--muted);font-size:12px;margin-bottom:3px}
 .stat b{font-size:21px;letter-spacing:.2px}
+.stat-breakdown{display:flex;gap:10px;margin-top:6px;font-size:11.5px;font-weight:600}
+.stat-breakdown span{display:flex;align-items:center;gap:3px}
+.stat-breakdown .ok{color:#12b981}
+.stat-breakdown .paused{color:#f0a53c}
+.stat-breakdown .err{color:#f0524f}
 .ic.g{background:rgba(18,185,129,.14)}.ic.g svg{stroke:var(--accent)}
 .ic.b{background:rgba(59,158,255,.14)}.ic.b svg{stroke:var(--info)}
 .ic.a{background:rgba(245,165,36,.16)}.ic.a svg{stroke:var(--warn)}
@@ -256,10 +262,10 @@ th[onclick]:hover{color:var(--accent)}
     <div class="stat">
       <div class="ic b"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
       <div><small>{{ t('stat_prospects') }}</small><b>{{ metrics.total_profiles }}</b>
-        <div style="margin-top:4px;font-size:11px;display:flex;gap:6px;flex-wrap:wrap">
-          <span class="pill" style="background:rgba(18,185,129,.15);color:#12b981">✅ {{ status_counts.ok }} OK</span>
-          <span class="pill" style="background:rgba(240,165,60,.15);color:#f0a53c">⏸️ {{ status_counts.paused }} Paused</span>
-          <span class="pill" style="background:rgba(240,82,79,.15);color:#f0524f">❌ {{ status_counts.error }} Error</span>
+        <div class="stat-breakdown">
+          <span class="ok">● {{ status_counts.ok }} OK</span>
+          <span class="paused">● {{ status_counts.paused }} Paused</span>
+          <span class="err">● {{ status_counts.error }} Error</span>
         </div>
       </div>
     </div>
