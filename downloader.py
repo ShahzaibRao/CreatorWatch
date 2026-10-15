@@ -665,8 +665,12 @@ def fetch_all_entries(profile: dict, scope: str = "both"):
                 all_entries.append(e)
         except Exception as ex:
             errors.append(f"{url[:50]}: {ex}")
+    # Sab links fail hon to error raise karo (warna OK dikhega ghalat!)
+    if not all_entries and errors:
+        raise Exception("; ".join(errors[:3]))
     return all_entries, errors
-    profile_url = normalize_profile_url(profile_url)
+
+def _ffmpeg():
     with _yt_dlp().YoutubeDL(_ydl_opts_flat()) as ydl:
         info = ydl.extract_info(profile_url, download=False)
     entries = []
@@ -740,26 +744,6 @@ def fetch_all_entries(profile: dict, scope: str = "both"):
         })
     return entries[:10]
 
-def fetch_all_entries(profile: dict, scope: str = "both"):
-    """Multi-link prospect: main URL + extra links se sab entries (har link ka platform alag ho sakta hai).
-    Har entry me '_platform' add hota hai taake download sahi method se ho."""
-    from database import get_all_profile_urls
-    all_entries, seen_ids, errors = [], set(), []
-    for url, plat in get_all_profile_urls(profile):
-        try:
-            entries = fetch_latest_entries(url, scope)
-            for e in entries:
-                eid = f"{plat}:{e['id']}"  # alag platforms ki same ID takraye nahi
-                if eid in seen_ids:
-                    continue
-                seen_ids.add(eid)
-                e = dict(e)
-                e["_platform"] = plat or detect_platform(url)
-                e["_source_url"] = url
-                all_entries.append(e)
-        except Exception as ex:
-            errors.append(f"{url[:50]}: {ex}")
-    return all_entries, errors
 
 def _ffmpeg():
     # Priority: 1) tools/ffmpeg.exe (user ne Update Engines se install kiya)
