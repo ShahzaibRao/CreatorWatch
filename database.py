@@ -30,6 +30,16 @@ def init_db():
         method TEXT DEFAULT 'auto'
     )
     """)
+    # Multi-link prospects — ek prospect ke kai URLs (TikTok+IG+YT+Snap), sab ek folder me
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS profile_links (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        profile_id INTEGER NOT NULL,
+        url TEXT NOT NULL,
+        platform TEXT DEFAULT '',
+        UNIQUE(profile_id, url)
+    )
+    """)
     # Failed Retry Queue — jo videos fail hui, dobara try ke liye
     conn.execute("""
     CREATE TABLE IF NOT EXISTS failed_downloads (
@@ -250,6 +260,8 @@ def get_due_profiles():
 def delete_profile(pid):
     conn = get_conn()
     conn.execute("DELETE FROM videos WHERE profile_id=?", (pid,))
+    conn.execute("DELETE FROM profile_links WHERE profile_id=?", (pid,))
+    conn.execute("DELETE FROM failed_downloads WHERE profile_id=?", (pid,))
     conn.execute("DELETE FROM profiles WHERE id=?", (pid,))
     conn.commit()
     conn.close()
@@ -321,6 +333,36 @@ def clear_skipped(profile_id):
     conn.commit()
     conn.close()
     return n
+
+def get_profile_links(profile_id):
+    """Ek prospect ke saare extra links (main URL ke ilawa)."""
+    conn = get_conn()
+    rows = conn.execute("SELECT id, url, platform FROM profile_links WHERE profile_id=? ORDER BY id", (profile_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def get_all_profile_urls(profile):
+    """Main URL + extra links — sab (url, platform) pairs."""
+    urls = [(profile["url"], profile.get("platform", ""))]
+    for l in get_profile_links(profile["id"]):
+        urls.append((l["url"], l.get("platform", "")))
+    return urls
+
+def set_profile_links(profile_id, urls):
+    """Extra links set karo (purane hatao, naye lagao). urls = [(url, platform), ...]"""
+    conn = get_conn()
+    conn.execute("DELETE FROM profile_links WHERE profile_id=?", (profile_id,))
+    for url, plat in urls:
+        url = (url or "").strip()
+        if not url:
+            continue
+        try:
+            conn.execute("INSERT INTO profile_links (profile_id, url, platform) VALUES (?,?,?)",
+                         (profile_id, url, plat or ""))
+        except Exception:
+            pass
+    conn.commit()
+    conn.close()
 
 def mark_seen(profile_id, video_id, title=""):
     """Purani video ko bina download kiye 'dekha hua' mark karo — phir kabhi download nahi hogi."""

@@ -293,7 +293,9 @@ th[onclick]:hover{color:var(--accent)}
               <option value="best">Best</option>
             </select>
           </div>
-          <div class="full"><label>{{ t('f_link') }}</label><input name="url" placeholder="{{ t('f_link_ph') }}" required></div>
+          <div class="full"><label>{{ t('f_link') }} <small style="color:var(--muted)">— ek se zyada links? Har line par ek link (TikTok+IG+YT+Snap), sab ek folder me!</small></label><textarea name="url" rows="3" placeholder="{{ t('f_link_ph') }}
+https://www.tiktok.com/@user2
+https://www.instagram.com/user" required style="width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;outline:none;resize:vertical"></textarea></div>
           <div class="full"><label>Save folder (default: downloads/CreatorWatch/… — ya khud path likho, ya Select se browse karo)</label>
             <div style="display:flex;gap:8px"><input id="addFolder" name="folder" placeholder="default: downloads/CreatorWatch/…"><button type="button" class="btn ghost browse-btn" data-target="addFolder" style="white-space:nowrap">📁 Select</button></div>
           </div>
@@ -323,7 +325,7 @@ th[onclick]:hover{color:var(--accent)}
       {% set st = 'paused' if p.status=='paused' else ('error' if p.last_error else ('ok' if p.last_check else 'working')) %}
       <tr data-pid="{{ p.id }}" data-name="{{ p.name|lower }}" data-platform="{{ p.platform }}" data-interval="{{ p.interval_minutes or 15 }}" data-quality="{{ p.quality or '720p' }}" data-scope="{{ p.scope or 'both' }}" data-videos="{{ vcount.v }}" data-status="{{ st }}" data-lastcheck="{{ p.last_check or '' }}">
         <td><input type="checkbox" class="row-check pros-check" value="{{ p.id }}" onchange="updateBulk()"></td>
-        <td><a href="/open_folder/{{ p.id }}" title="Folder kholo" style="text-decoration:none;color:inherit"><span class="pname">{{ p.name }}</span></a> {% if p.id in unseen_pids %}<span class="pill new">{{ t('new') }}</span>{% endif %}<br><a href="/open_folder/{{ p.id }}" title="Folder kholo: {{ p.folder }}" style="text-decoration:none"><span class="pfolder" title="{{ p.folder }}">{{ p.folder }}</span></a><br><span style="font-size:11.5px;color:var(--muted)">{{ p.last_check|humantime or t('first_dl') }}</span>
+        <td><a href="/open_folder/{{ p.id }}" title="Folder kholo" style="text-decoration:none;color:inherit"><span class="pname">{{ p.name }}</span></a> {% if p.id in link_counts %}<span class="pill" style="background:rgba(59,158,255,.15);color:#3b9eff" title="{{ link_counts[p.id] }} links (multiple platforms)">🔗{{ link_counts[p.id] }}</span>{% endif %} {% if p.id in unseen_pids %}<span class="pill new">{{ t('new') }}</span>{% endif %}<br><a href="/open_folder/{{ p.id }}" title="Folder kholo: {{ p.folder }}" style="text-decoration:none"><span class="pfolder" title="{{ p.folder }}">{{ p.folder }}</span></a><br><span style="font-size:11.5px;color:var(--muted)">{{ p.last_check|humantime or t('first_dl') }}</span>
           <div class="prog" id="prog-{{ p.id }}"><div class="bar"><div class="fill"></div></div><small></small></div>
         </td>
         <td><span class="badge {% if p.platform=='youtube' %}yt{% elif p.platform=='tiktok' %}tk{% elif p.platform=='instagram' %}ig{% elif p.platform=='twitter' %}tw{% elif p.platform=='snapchat' %}sc{% endif %}">{{ p.platform }}</span></td>

@@ -670,17 +670,26 @@ def dashboard():
         else:
             st_working += 1
     status_counts = {"ok": st_ok, "paused": st_paused, "error": st_error, "working": st_working}
+    # Multi-link counts (har prospect ke kitne links)
+    link_counts = {}
+    for p in profiles:
+        try:
+            n = len(db.get_profile_links(p["id"]))
+            if n:
+                link_counts[p["id"]] = n + 1  # +1 main URL
+        except Exception:
+            pass
     cookies_ok = os.path.exists(os.path.join(os.path.dirname(__file__), "cookies.txt"))
     return render_template("dashboard.html", profiles=profiles, metrics=metrics,
                            recent=recent, cookies_ok=cookies_ok, version=VERSION,
                            unseen=unseen, unseen_pids=unseen_pids, blocked=db.youtube_blocked(),
-                           status_counts=status_counts,
+                           status_counts=status_counts, link_counts=link_counts,
                            msg=request.args.get("msg", ""), msg_ok=request.args.get("ok", "") == "1")
 
 @app.route("/add", methods=["POST"])
 def add():
     name = request.form.get("name", "").strip()
-    url = request.form.get("url", "").strip()
+    url_raw = request.form.get("url", "").strip()
     quality = request.form.get("quality", "720p").strip()
     if quality not in ("best", "1080p", "720p", "480p", "360p"):
         quality = "720p"
@@ -689,8 +698,14 @@ def add():
     except ValueError:
         interval = 15
     interval = max(5, min(interval, 1440))  # 5 min se 24h tak
-    if not name or not url:
+    if not name or not url_raw:
         return redirect(url_for("dashboard"))
+    # Multiple links (har line ek) — pehli main, baqi extra
+    urls = [u.strip() for u in url_raw.replace(",", "\n").split("\n") if u.strip()]
+    if not urls:
+        return redirect(url_for("dashboard"))
+    url = urls[0]
+    extra_urls = urls[1:]
     platform = detect_platform(url)
     from downloader import detect_scope
     scope = detect_scope(url)
@@ -708,9 +723,14 @@ def add():
         folder = prospect_folder(name, platform)
     pid = db.add_profile(name, platform, url, folder, interval, quality, scope, method)
     if pid:
+        # Extra links save karo
+        if extra_urls:
+            db.set_profile_links(pid, [(u, detect_platform(u)) for u in extra_urls])
         # first-time latest download pool worker me (user ko wait nahi karna)
         submit(pid, first=True)
-    return redirect(url_for("dashboard"))
+    n_links = 1 + len(extra_urls)
+    msg = f"{name}: {n_links} link(s) add ho gaye — sab ek folder me!"
+    return redirect(url_for("dashboard", msg=msg, ok="1"))
 
 @app.route("/edit/<int:pid>", methods=["GET", "POST"])
 def edit(pid):
@@ -719,7 +739,11 @@ def edit(pid):
         return redirect(url_for("dashboard"))
     if request.method == "POST":
         name = request.form.get("name", "").strip() or p["name"]
-        url = request.form.get("url", "").strip() or p["url"]
+        url_raw = request.form.get("url", "").strip() or p["url"]
+        # Multiple links — pehli main, baqi extra
+        urls = [u.strip() for u in url_raw.replace(",", "\n").split("\n") if u.strip()]
+        url = urls[0] if urls else p["url"]
+        extra_urls = urls[1:] if len(urls) > 1 else []
         quality = request.form.get("quality", "720p").strip()
         if quality not in ("best", "1080p", "720p", "480p", "360p"):
             quality = "720p"
@@ -734,13 +758,14 @@ def edit(pid):
             from downloader import resolve_folder
             folder_ok, err = resolve_folder(folder_in)
             if not folder_ok:
-                return render_template("edit.html", p=p, msg=f"Folder ghalat hai: {err}")
+                return render_template("edit.html", p=p, extra_links=db.get_profile_links(pid), msg=f"Folder ghalat hai: {err}")
             folder = folder_ok
         scope = request.form.get("scope", "").strip() or None
         method = request.form.get("method", "").strip() or None
         db.update_profile(pid, name, url, interval, quality, folder, scope, method)
+        db.set_profile_links(pid, [(u, detect_platform(u)) for u in extra_urls])
         return redirect(url_for("dashboard"))
-    return render_template("edit.html", p=p)
+    return render_template("edit.html", p=p, extra_links=db.get_profile_links(pid))
 
 @app.route("/delete/<int:pid>")
 def delete(pid):

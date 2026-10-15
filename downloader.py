@@ -645,6 +645,27 @@ def fetch_latest_entries(profile_url: str, scope: str = "both"):
                 if len(entries) >= 10:
                     break
             return entries[:10]
+
+def fetch_all_entries(profile: dict, scope: str = "both"):
+    """Multi-link prospect: main URL + extra links se sab entries (har link ka platform alag ho sakta hai).
+    Har entry me '_platform' add hota hai taake download sahi method se ho."""
+    from database import get_all_profile_urls
+    all_entries, seen_ids, errors = [], set(), []
+    for url, plat in get_all_profile_urls(profile):
+        try:
+            entries = fetch_latest_entries(url, scope)
+            for e in entries:
+                eid = f"{plat}:{e['id']}"  # alag platforms ki same ID takraye nahi
+                if eid in seen_ids:
+                    continue
+                seen_ids.add(eid)
+                e = dict(e)
+                e["_platform"] = plat or detect_platform(url)
+                e["_source_url"] = url
+                all_entries.append(e)
+        except Exception as ex:
+            errors.append(f"{url[:50]}: {ex}")
+    return all_entries, errors
     profile_url = normalize_profile_url(profile_url)
     with _yt_dlp().YoutubeDL(_ydl_opts_flat()) as ydl:
         info = ydl.extract_info(profile_url, download=False)
@@ -718,6 +739,27 @@ def fetch_latest_entries(profile_url: str, scope: str = "both"):
             "url": e.get("url") or e.get("webpage_url") or f"https://www.youtube.com/watch?v={vid}",
         })
     return entries[:10]
+
+def fetch_all_entries(profile: dict, scope: str = "both"):
+    """Multi-link prospect: main URL + extra links se sab entries (har link ka platform alag ho sakta hai).
+    Har entry me '_platform' add hota hai taake download sahi method se ho."""
+    from database import get_all_profile_urls
+    all_entries, seen_ids, errors = [], set(), []
+    for url, plat in get_all_profile_urls(profile):
+        try:
+            entries = fetch_latest_entries(url, scope)
+            for e in entries:
+                eid = f"{plat}:{e['id']}"  # alag platforms ki same ID takraye nahi
+                if eid in seen_ids:
+                    continue
+                seen_ids.add(eid)
+                e = dict(e)
+                e["_platform"] = plat or detect_platform(url)
+                e["_source_url"] = url
+                all_entries.append(e)
+        except Exception as ex:
+            errors.append(f"{url[:50]}: {ex}")
+    return all_entries, errors
 
 def _ffmpeg():
     # Priority: 1) tools/ffmpeg.exe (user ne Update Engines se install kiya)
@@ -1375,7 +1417,7 @@ def first_run(profile: dict, progress=None):
     if progress:
         progress({"stage": "listing", "done": 0, "total": 1, "pct": None, "title": "latest dhoond rahe hain..."})
     try:
-        entries = fetch_latest_entries(profile["url"], profile.get("scope", "both") or "both")
+        entries, fetch_errs = fetch_all_entries(profile, profile.get("scope", "both") or "both")
     except Exception as e:
         msg = _friendly_error(profile, f"Fetch failed: {e}")
         set_profile_error(pid, msg)
@@ -1388,11 +1430,13 @@ def first_run(profile: dict, progress=None):
     method = profile.get("method", "auto") or "auto"
     new_count, errors = 0, []
     latest = entries[0]  # sab se recent upload
+    # Multi-link: har entry ka apna platform
+    latest_plat = latest.get("_platform") or platform
     if not video_exists(pid, latest["id"]):
         try:
             if progress:
                 progress({"stage": "downloading", "done": 0, "total": 1, "pct": 0, "title": latest["title"][:60]})
-            fp, title = download_one(latest["url"], folder, quality, platform,
+            fp, title = download_one(latest["url"], folder, quality, latest_plat,
                                      progress=(lambda u: progress({**{"stage": "downloading", "done": 0, "total": 1}, **u})) if progress else None,
                                      method=method, title=latest.get("title", ""))
             if fp == folder:
@@ -1429,7 +1473,7 @@ def check_profile(profile: dict, progress=None):
     if progress:
         progress({"stage": "listing", "done": 0, "total": 1, "pct": None, "title": "check ho raha hai..."})
     try:
-        entries = fetch_latest_entries(profile["url"], profile.get("scope", "both") or "both")
+        entries, fetch_errs = fetch_all_entries(profile, profile.get("scope", "both") or "both")
     except Exception as e:
         msg = _friendly_error(profile, f"Fetch failed: {e}")
         set_profile_error(pid, msg)
@@ -1452,6 +1496,8 @@ def check_profile(profile: dict, progress=None):
     total = max(len(fresh), 1)
     for i, e in enumerate(fresh):
         vid = e["id"]
+        # Multi-link: har entry ka apna platform
+        e_plat = e.get("_platform") or platform
         # DB check: pehle download ho chuki to skip (file delete ho tab bhi skip)
         if video_exists(pid, vid):
             continue
@@ -1459,7 +1505,7 @@ def check_profile(profile: dict, progress=None):
             base = {"stage": "downloading", "done": i, "total": total}
             if progress:
                 progress({**base, "pct": 0, "title": e["title"][:60]})
-            fp, title = download_one(e["url"], folder, quality, platform,
+            fp, title = download_one(e["url"], folder, quality, e_plat,
                                      progress=(lambda u, b=base: progress({**b, **u})) if progress else None,
                                      method=method, title=e.get("title", ""))
             if fp == folder:
