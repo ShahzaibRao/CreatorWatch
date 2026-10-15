@@ -658,10 +658,23 @@ def dashboard():
     recent = db.get_recent_videos(10)
     unseen = db.get_unseen(20)
     unseen_pids = db.unseen_profiles()
+    # Status counts: OK / paused / error
+    st_ok = st_paused = st_error = st_working = 0
+    for p in profiles:
+        if p.get("status") == "paused":
+            st_paused += 1
+        elif p.get("last_error"):
+            st_error += 1
+        elif p.get("last_check"):
+            st_ok += 1
+        else:
+            st_working += 1
+    status_counts = {"ok": st_ok, "paused": st_paused, "error": st_error, "working": st_working}
     cookies_ok = os.path.exists(os.path.join(os.path.dirname(__file__), "cookies.txt"))
     return render_template("dashboard.html", profiles=profiles, metrics=metrics,
                            recent=recent, cookies_ok=cookies_ok, version=VERSION,
                            unseen=unseen, unseen_pids=unseen_pids, blocked=db.youtube_blocked(),
+                           status_counts=status_counts,
                            msg=request.args.get("msg", ""), msg_ok=request.args.get("ok", "") == "1")
 
 @app.route("/add", methods=["POST"])
