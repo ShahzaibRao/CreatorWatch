@@ -509,9 +509,11 @@ def _setup_tray(win):
 def _toast_done(p, new):
     """Download-complete popup (cloud branch). Never breaks the worker.
     Batched: kai downloads ek sath hon to ek summary notification."""
+    print(f"[TOAST-DEBUG] _toast_done: {p['name']} new={new}", flush=True)
     folder = p.get("folder") or ""
     try:
         notify.download_complete_batched(p["name"], new, folder)
+        print(f"[TOAST-DEBUG] _toast_done dispatched OK", flush=True)
     except Exception as e:
         print(f"[TOAST FAIL] {e}", flush=True)
 

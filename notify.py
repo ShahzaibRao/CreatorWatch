@@ -42,13 +42,24 @@ def open_folder(path):
 def _windows_toast(title, lines, folder):
     # Har bar NAYA toaster — singleton alag threads par COM issue deta hai
     # (test Flask thread par kaam karta, download daemon thread par fail).
-    from windows_toasts import WindowsToaster, Toast
-    toaster = WindowsToaster(_APP)
-    t = Toast()
-    t.text_fields = [title] + lines[:2]
-    if folder:
-        t.on_activated = lambda _: open_folder(folder)
-    toaster.show_toast(t)
+    print(f"[TOAST-DEBUG] _windows_toast start: title={title[:30]}", flush=True)
+    try:
+        from windows_toasts import WindowsToaster, Toast
+        print(f"[TOAST-DEBUG] imports OK", flush=True)
+        toaster = WindowsToaster(_APP)
+        print(f"[TOAST-DEBUG] toaster created", flush=True)
+        t = Toast()
+        t.text_fields = [title] + lines[:2]
+        if folder:
+            t.on_activated = lambda _: open_folder(folder)
+        print(f"[TOAST-DEBUG] calling show_toast...", flush=True)
+        toaster.show_toast(t)
+        print(f"[TOAST-DEBUG] show_toast returned OK", flush=True)
+    except Exception as e:
+        import traceback
+        print(f"[TOAST-DEBUG] FAIL: {type(e).__name__}: {e}", flush=True)
+        print(traceback.format_exc()[:800], flush=True)
+        raise
 
 
 def _linux_toast(title, lines):
@@ -61,6 +72,7 @@ def _linux_toast(title, lines):
 
 
 def _notify(profile_name, count, folder):
+    print(f"[TOAST-DEBUG] _notify: {profile_name} count={count}", flush=True)
     noun = "video" if count == 1 else "videos"
     title = f"\U0001F4E5 {profile_name}"
     if folder and platform.system() == "Windows":
@@ -77,6 +89,7 @@ def _notify(profile_name, count, folder):
             _windows_toast(title, lines, folder)
         else:
             _linux_toast(title, lines)
+        print(f"[TOAST-DEBUG] _notify done OK", flush=True)
     except Exception as e:
         print(f"[TOAST FAIL] {e}", flush=True)
 
@@ -96,9 +109,14 @@ _TOAST_LOCK = threading.Lock()
 
 def download_complete_batched(profile_name, count, folder=""):
     """Serialized toast — ek waqt me ek hi (Windows WinRT thread-safe nahi)."""
+    print(f"[TOAST-DEBUG] download_complete_batched: {profile_name} count={count}", flush=True)
     if not count:
+        print(f"[TOAST-DEBUG] count=0, skip", flush=True)
         return
     def _serialized():
+        print(f"[TOAST-DEBUG] thread started for {profile_name}", flush=True)
         with _TOAST_LOCK:
+            print(f"[TOAST-DEBUG] lock acquired for {profile_name}", flush=True)
             _notify(profile_name, count, folder or "")
     threading.Thread(target=_serialized, daemon=True, name="toast").start()
+    print(f"[TOAST-DEBUG] thread spawned for {profile_name}", flush=True)
